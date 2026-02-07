@@ -12,7 +12,11 @@ class Config:
     
     # Database settings
     basedir = os.path.abspath(os.path.dirname(__file__))
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', f'sqlite:///{os.path.join(basedir, "instance", "devalert.db")}')
+    instance_path = os.path.join(basedir, "instance")
+    if not os.path.exists(instance_path):
+        os.makedirs(instance_path, exist_ok=True)
+        
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', f'sqlite:///{os.path.join(instance_path, "devalert.db")}')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT settings
