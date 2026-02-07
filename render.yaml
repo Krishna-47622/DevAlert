@@ -3,7 +3,7 @@ services:
     name: devalert
     env: python
     buildCommand: "./build.sh"
-    startCommand: "cd backend && gunicorn app:app"
+    startCommand: "cd backend && gunicorn wsgi:app"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
