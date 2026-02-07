@@ -12,11 +12,23 @@ class Config:
     
     # Database settings
     basedir = os.path.abspath(os.path.dirname(__file__))
-    instance_path = os.path.join(basedir, "instance")
-    if not os.path.exists(instance_path):
-        os.makedirs(instance_path, exist_ok=True)
-        
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', f'sqlite:///{os.path.join(instance_path, "devalert.db")}')
+    
+    # Render deployment check
+    if os.getenv('RENDER'):
+        # On Render, use /tmp for SQLite (ephemeral but writable)
+        # OR use the provided DATABASE_URL if it's Postgres
+        db_url = os.getenv('DATABASE_URL')
+        if db_url and 'postgres' in db_url:
+            SQLALCHEMY_DATABASE_URI = db_url
+        else:
+            SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/devalert.db'
+            print("🚀 Running on Render: Using /tmp/devalert.db")
+    else:
+        # Local development
+        instance_path = os.path.join(basedir, "instance")
+        if not os.path.exists(instance_path):
+            os.makedirs(instance_path, exist_ok=True)
+        SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', f'sqlite:///{os.path.join(instance_path, "devalert.db")}')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT settings
