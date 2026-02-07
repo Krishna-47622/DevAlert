@@ -1,0 +1,15 @@
+--- Database Schema Integrity Check ---
+
+Table 'users':
+  Columns: id, username, email, password_hash, role, organization, designation, is_host_approved, requested_host_access, created_at
+  ✅ Users table matches model.
+
+Table 'hackathons':
+  Columns: id, title, description, organizer, location, mode, deadline, start_date, end_date, prize_pool, registration_link, status, source, created_at, updated_at
+  ✅ Hackathons table has source column.
+
+Table 'internships':
+  Columns: id, title, company, description, location, mode, duration, stipend, deadline, start_date, skills_required, application_link, status, source, created_at, updated_at
+  ✅ Internships table has source column.
+
+--- End of Check ---

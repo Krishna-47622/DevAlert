@@ -1,0 +1,5 @@
+Total users: 4
+ID: 1, Username: admin, Role: admin, HostApproved: False, RequestedHost: False
+ID: 2, Username: Keerthi, Role: hoster, HostApproved: True, RequestedHost: False
+ID: 3, Username: Krishna, Role: admin, HostApproved: False, RequestedHost: False
+ID: 4, Username: Laasya, Role: participant, HostApproved: False, RequestedHost: False

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: devalert
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "cd backend && gunicorn app:app"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
