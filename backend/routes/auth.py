@@ -107,3 +107,27 @@ def get_current_user():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@auth_bp.route('/promote-admin/<string:username>/<string:secret_key>', methods=['GET'])
+def promote_admin(username, secret_key):
+    try:
+        SETUP_SECRET = 'setup-2024'
+        if secret_key != SETUP_SECRET:
+            return jsonify({'error': 'Invalid setup secret'}), 403
+            
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            return jsonify({'error': 'User not found. Please register first.'}), 404
+            
+        user.role = 'admin'
+        user.is_host_approved = True
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Success! User {username} is now an Admin.',
+            'user': user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
