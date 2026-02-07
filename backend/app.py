@@ -121,6 +121,11 @@ def build_frontend():
     except subprocess.CalledProcessError:
         return False
 
+
+# Create global app instance for Gunicorn if user runs app:app
+# (This acts as a fallback if WSGI isn't used)
+app = create_app()
+
 if __name__ == '__main__':
     print("=" * 60)
     print("DevAlert - Hackathon & Internship Alert Platform")
@@ -130,9 +135,8 @@ if __name__ == '__main__':
     print("\nChecking frontend build...")
     build_success = build_frontend()
     
-    # Create and run Flask app
+    # Run the app instance
     print("\nStarting Flask server...")
-    app = create_app()
     
     print("\n" + "=" * 60)
     print("Server is running!")
