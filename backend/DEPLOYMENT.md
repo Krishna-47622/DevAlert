@@ -58,7 +58,8 @@ JWT_SECRET_KEY=<random-string>
 DATABASE_URL=<postgresql-url>
 
 # Frontend
-FRONTEND_URL=https://devalert-live.onrender.com
+FRONTEND_URL=https://<your-app-name>.onrender.com
+# (Copy this from Render Dashboard -> Web Service -> URL at top)
 
 # Google OAuth
 GOOGLE_OAUTH_CLIENT_ID=<your-prod-client-id>
