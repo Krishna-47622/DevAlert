@@ -69,17 +69,33 @@ def send_verification_email(user, base_url):
     </html>
     """
     
-    # Send email
+    # Send email asynchronously
     try:
         msg = Message(
             subject="Verify Your Email - DevAlert",
             recipients=[user.email],
             html=html_body
         )
-        mail.send(msg)
+        
+        # Send in a separate thread to avoid blocking
+        from threading import Thread
+        from flask import current_app
+        
+        # We need to capture the app context to use flask-mail inside the thread
+        app = current_app._get_current_object()
+        
+        def send_async_email(app, msg):
+            with app.app_context():
+                try:
+                    mail.send(msg)
+                    print(f"✅ Verification email sent to {msg.recipients}")
+                except Exception as e:
+                    print(f"❌ Error sending verification email: {e}")
+        
+        Thread(target=send_async_email, args=(app, msg)).start()
         return True
     except Exception as e:
-        print(f"Error sending verification email: {e}")
+        print(f"Error preparing verification email: {e}")
         return False
 
 def send_password_reset_email(user, base_url):
@@ -138,17 +154,33 @@ def send_password_reset_email(user, base_url):
     </html>
     """
     
-    # Send email
+    # Send email asynchronously
     try:
         msg = Message(
             subject="Reset Your Password - DevAlert",
             recipients=[user.email],
             html=html_body
         )
-        mail.send(msg)
+        
+        # Send in a separate thread to avoid blocking
+        from threading import Thread
+        from flask import current_app
+        
+        # We need to capture the app context to use flask-mail inside the thread
+        app = current_app._get_current_object()
+        
+        def send_async_email(app, msg):
+            with app.app_context():
+                try:
+                    mail.send(msg)
+                    print(f"✅ Password reset email sent to {msg.recipients}")
+                except Exception as e:
+                    print(f"❌ Error sending password reset email: {e}")
+        
+        Thread(target=send_async_email, args=(app, msg)).start()
         return True
     except Exception as e:
-        print(f"Error sending password reset email: {e}")
+        print(f"Error preparing password reset email: {e}")
         return False
 
 def send_2fa_enabled_notification(user):
@@ -185,14 +217,31 @@ def send_2fa_enabled_notification(user):
     </html>
     """
     
+    # Send email asynchronously
     try:
         msg = Message(
             subject="Two-Factor Authentication Enabled - DevAlert",
             recipients=[user.email],
             html=html_body
         )
-        mail.send(msg)
+        
+        # Send in a separate thread to avoid blocking
+        from threading import Thread
+        from flask import current_app
+        
+        # We need to capture the app context to use flask-mail inside the thread
+        app = current_app._get_current_object()
+        
+        def send_async_email(app, msg):
+            with app.app_context():
+                try:
+                    mail.send(msg)
+                    print(f"✅ Email sent to {msg.recipients}")
+                except Exception as e:
+                    print(f"❌ Error sending email: {e}")
+        
+        Thread(target=send_async_email, args=(app, msg)).start()
         return True
     except Exception as e:
-        print(f"Error sending 2FA notification: {e}")
+        print(f"Error preparing 2FA notification: {e}")
         return False
