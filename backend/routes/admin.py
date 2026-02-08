@@ -358,53 +358,75 @@ def approve_host(user_id):
 @admin_bp.route('/test-email', methods=['POST'])
 @jwt_required()
 def test_email_config():
-    """Test email configuration synchronously (admin only)"""
+    """Run SMTP diagnostics (non-blocking probe)"""
+    import smtplib
+    import socket
+    import ssl
+    
+    results = {}
+    
     try:
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
+        if not user: return jsonify({'error': 'User not found'}), 404
         
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-            
-        # DEBUG: Allow any authenticated user to test email for now
-        print(f"DEBUG: Test email requested by user {user.username} (Role: {user.role})")
+        # DEBUG info
+        print(f"DEBUG: Diag requested by {user.username}")
         
         data = request.get_json()
         recipient = data.get('email', user.email)
         
-        from flask_mail import Message
-        from services.email_service import mail
-        from flask import current_app
+        # Load config
+        mail_server = current_app.config['MAIL_SERVER']
+        mail_username = current_app.config['MAIL_USERNAME']
+        mail_password = current_app.config['MAIL_PASSWORD']
         
-        msg = Message(
-            subject="DevAlert SMTP Test",
-            recipients=[recipient],
-            body=f"This is a test email from DevAlert.\n\nServer: {current_app.config['MAIL_SERVER']}:{current_app.config['MAIL_PORT']}\nTLS: {current_app.config['MAIL_USE_TLS']}\nSSL: {current_app.config['MAIL_USE_SSL']}"
-        )
-        
-        # Log before sending
-        print(f"📧 TEST: Sending to {recipient} via {current_app.config['MAIL_SERVER']}:{current_app.config['MAIL_PORT']}")
-        
-        # Send SYNCHRONOUSLY to catch errors
-        mail.send(msg)
-        
-        print("✅ TEST: Email sent successfully")
+        # --- TEST 1: Port 587 (TLS) ---
+        results['port_587'] = {'status': 'pending'}
+        try:
+            print("Trying SMTP 587...")
+            with smtplib.SMTP(mail_server, 587, timeout=5) as server:
+                server.set_debuglevel(1)
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(mail_username, mail_password)
+                results['port_587'] = {'status': 'success', 'message': 'Auth successful'}
+                
+                # Try sending
+                msg = f"Subject: DevAlert Test (587)\n\nTest from Port 587."
+                server.sendmail(mail_username, recipient, msg)
+                results['port_587']['send'] = 'success'
+        except Exception as e:
+            results['port_587'] = {'status': 'failed', 'error': str(e)}
+
+        # --- TEST 2: Port 465 (SSL) ---
+        results['port_465'] = {'status': 'pending'}
+        try:
+            print("Trying SMTP 465...")
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(mail_server, 465, timeout=5, context=context) as server:
+                server.login(mail_username, mail_password)
+                results['port_465'] = {'status': 'success', 'message': 'Auth successful'}
+                
+                # Try sending
+                msg = f"Subject: DevAlert Test (465)\n\nTest from Port 465."
+                server.sendmail(mail_username, recipient, msg)
+                results['port_465']['send'] = 'success'
+        except Exception as e:
+            results['port_465'] = {'status': 'failed', 'error': str(e)}
+
         return jsonify({
-            'message': 'Email sent successfully!',
-            'details': {
-                'server': current_app.config['MAIL_SERVER'],
-                'port': current_app.config['MAIL_PORT'],
-                'tls': current_app.config['MAIL_USE_TLS'],
-                'ssl': current_app.config['MAIL_USE_SSL'],
-                'recipient': recipient
+            'message': 'Diagnostics complete',
+            'results': results,
+            'config': {
+                'server': mail_server,
+                'username_provided': bool(mail_username),
+                'password_provided': bool(mail_password)
             }
         }), 200
-        
+
     except Exception as e:
-        print(f"❌ TEST ERROR: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 500
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
