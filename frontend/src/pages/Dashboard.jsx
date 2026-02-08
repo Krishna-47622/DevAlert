@@ -57,15 +57,15 @@ export default function Dashboard() {
                         <CardBody>
                             <div className="flex justify-between mb-2">
                                 <span>Total:</span>
-                                <strong>{stats.hackathons.total}</strong>
+                                <strong>{stats?.hackathons?.total || 0}</strong>
                             </div>
                             <div className="flex justify-between mb-2">
                                 <span>Approved:</span>
-                                <strong className="badge badge-success">{stats.hackathons.approved}</strong>
+                                <strong className="badge badge-success">{stats?.hackathons?.approved || 0}</strong>
                             </div>
                             <div className="flex justify-between">
                                 <span>Pending:</span>
-                                <strong className="badge badge-warning">{stats.hackathons.pending}</strong>
+                                <strong className="badge badge-warning">{stats?.hackathons?.pending || 0}</strong>
                             </div>
                         </CardBody>
                     </Card>
@@ -75,15 +75,15 @@ export default function Dashboard() {
                         <CardBody>
                             <div className="flex justify-between mb-2">
                                 <span>Total:</span>
-                                <strong>{stats.internships.total}</strong>
+                                <strong>{stats?.internships?.total || 0}</strong>
                             </div>
                             <div className="flex justify-between mb-2">
                                 <span>Approved:</span>
-                                <strong className="badge badge-success">{stats.internships.approved}</strong>
+                                <strong className="badge badge-success">{stats?.internships?.approved || 0}</strong>
                             </div>
                             <div className="flex justify-between">
                                 <span>Pending:</span>
-                                <strong className="badge badge-warning">{stats.internships.pending}</strong>
+                                <strong className="badge badge-warning">{stats?.internships?.pending || 0}</strong>
                             </div>
                         </CardBody>
                     </Card>
@@ -93,15 +93,15 @@ export default function Dashboard() {
                         <CardBody>
                             <div className="flex justify-between mb-2">
                                 <span>Total:</span>
-                                <strong>{stats.users.total}</strong>
+                                <strong>{stats?.users?.total || 0}</strong>
                             </div>
                             <div className="flex justify-between mb-2">
                                 <span>Admins:</span>
-                                <strong>{stats.users.admins}</strong>
+                                <strong>{stats?.users?.admins || 0}</strong>
                             </div>
                             <div className="flex justify-between">
                                 <span>Applicants:</span>
-                                <strong>{stats.users.applicants}</strong>
+                                <strong>{stats?.users?.applicants || 0}</strong>
                             </div>
                         </CardBody>
                     </Card>
