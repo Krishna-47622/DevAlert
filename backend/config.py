@@ -16,14 +16,18 @@ class Config:
     # Render deployment check
     if os.getenv('RENDER'):
         # On Render, use /tmp for SQLite (ephemeral but writable)
-        # OR use the provided DATABASE_URL if it's Postgres
+        # OR use the provided DATABASE_URL (Postgres, MySQL, etc.)
         db_url = os.getenv('DATABASE_URL')
-        if db_url and 'postgres' in db_url:
+        if db_url:
             # Fix for SQLAlchemy requiring postgresql:// instead of postgres://
             if db_url.startswith("postgres://"):
                 db_url = db_url.replace("postgres://", "postgresql://", 1)
+            # Fix for MySQL: Ensure it uses pymysql driver if not specified
+            elif db_url.startswith("mysql://") and "pymysql" not in db_url:
+                db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+                
             SQLALCHEMY_DATABASE_URI = db_url
-            print("🚀 Running on Render: Using PostgreSQL Database")
+            print(f"🚀 Running on Render: Using External Database ({db_url.split(':')[0]})")
         else:
             SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/devalert.db'
             print("⚠️ Running on Render: Using EPHEMERAL SQLite (Data lost on restart)")
