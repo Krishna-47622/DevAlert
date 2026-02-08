@@ -362,6 +362,7 @@ def test_email_config():
     import smtplib
     import socket
     import ssl
+    from flask import current_app
     
     results = {}
     

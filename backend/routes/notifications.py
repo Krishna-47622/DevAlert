@@ -46,6 +46,9 @@ def get_unread_count():
         count = Notification.query.filter_by(user_id=user_id, is_read=False).count()
         return jsonify({'count': count}), 200
     except Exception as e:
+        print(f"❌ Error in unread-count: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/<int:notification_id>/read', methods=['PUT'])
