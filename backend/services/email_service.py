@@ -116,7 +116,12 @@ def send_verification_email(user, base_url):
     db.session.commit()
     
     # Create verification URL
-    verification_url = f"{base_url}/verify-email/{token}"
+    # Safety check: Ensure base_url doesn't end with /api or /
+    clean_url = base_url.rstrip('/')
+    if clean_url.endswith('/api'):
+        clean_url = clean_url[:-4].rstrip('/')
+        
+    verification_url = f"{clean_url}/verify-email/{token}"
     
     # Email template (Simplified for brevity, can be expanded)
     html_body = f"""
@@ -145,7 +150,12 @@ def send_password_reset_email(user, base_url):
     user.password_reset_expires_at = datetime.utcnow() + timedelta(hours=1)
     db.session.commit()
     
-    reset_url = f"{base_url}/reset-password/{token}"
+    # Safety check: Ensure base_url doesn't end with /api or /
+    clean_url = base_url.rstrip('/')
+    if clean_url.endswith('/api'):
+        clean_url = clean_url[:-4].rstrip('/')
+        
+    reset_url = f"{clean_url}/reset-password/{token}"
     
     html_body = f"""
     <h1>Reset Password</h1>
