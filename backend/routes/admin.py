@@ -363,9 +363,12 @@ def test_email_config():
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Unauthorized'}), 403
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
             
+        # DEBUG: Allow any authenticated user to test email for now
+        print(f"DEBUG: Test email requested by user {user.username} (Role: {user.role})")
+        
         data = request.get_json()
         recipient = data.get('email', user.email)
         
