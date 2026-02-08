@@ -1,19 +1,24 @@
 services:
+  # Python Backend
   - type: web
-    name: devalert
+    name: devalert-backend
     env: python
-    buildCommand: "./build.sh"
-    startCommand: "cd backend && gunicorn wsgi:app"
+    rootDirectory: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn wsgi:app"
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.5
+        value: "3.11.5"
+      - key: FRONTEND_URL
+        value: "https://devalert-frontend.onrender.com"
 
-  - type: web
+  # React Frontend (Static Site)
+  - type: static
     name: devalert-frontend
     env: static
-    runtime: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: ./frontend/dist
+    rootDirectory: frontend
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: "dist"
     envVars:
       - key: VITE_API_URL
-        value: "https://devalert-live.onrender.com/api"
+        value: "https://devalert-backend.onrender.com/api"
