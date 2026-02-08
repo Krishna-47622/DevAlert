@@ -355,3 +355,53 @@ def approve_host(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+@admin_bp.route('/test-email', methods=['POST'])
+@jwt_required()
+def test_email_config():
+    """Test email configuration synchronously (admin only)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+            
+        data = request.get_json()
+        recipient = data.get('email', user.email)
+        
+        from flask_mail import Message
+        from services.email_service import mail
+        from flask import current_app
+        
+        msg = Message(
+            subject="DevAlert SMTP Test",
+            recipients=[recipient],
+            body=f"This is a test email from DevAlert.\n\nServer: {current_app.config['MAIL_SERVER']}:{current_app.config['MAIL_PORT']}\nTLS: {current_app.config['MAIL_USE_TLS']}\nSSL: {current_app.config['MAIL_USE_SSL']}"
+        )
+        
+        # Log before sending
+        print(f"📧 TEST: Sending to {recipient} via {current_app.config['MAIL_SERVER']}:{current_app.config['MAIL_PORT']}")
+        
+        # Send SYNCHRONOUSLY to catch errors
+        mail.send(msg)
+        
+        print("✅ TEST: Email sent successfully")
+        return jsonify({
+            'message': 'Email sent successfully!',
+            'details': {
+                'server': current_app.config['MAIL_SERVER'],
+                'port': current_app.config['MAIL_PORT'],
+                'tls': current_app.config['MAIL_USE_TLS'],
+                'ssl': current_app.config['MAIL_USE_SSL'],
+                'recipient': recipient
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ TEST ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
