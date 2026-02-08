@@ -13,7 +13,7 @@ services:
         value: "https://devalert-frontend.onrender.com"
 
   # React Frontend (Static Site)
-  - type: static
+  - type: static_site
     name: devalert-frontend
     env: static
     rootDirectory: frontend
