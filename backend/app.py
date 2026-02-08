@@ -37,6 +37,11 @@ def create_app():
     # Initialize OAuth
     init_oauth(app)
 
+    # Create database tables FIRST
+    with app.app_context():
+        db.create_all()
+        print("Database tables ensured")
+
     # Run Database Migrations (Auto-fix for Render)
     try:
         from migrate_account_features import migrate_database
@@ -46,36 +51,6 @@ def create_app():
             print("✅ Database migration finished")
     except Exception as e:
         print(f"⚠️ Automatic migration failed: {e}")
-    
-    # Register blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(hackathons_bp, url_prefix='/api/hackathons')
-    app.register_blueprint(internships_bp, url_prefix='/api/internships')
-    app.register_blueprint(admin_bp, url_prefix='/api/admin')
-    app.register_blueprint(scanner_bp, url_prefix='/api/scanner')
-    app.register_blueprint(applications_bp, url_prefix='/api/applications')
-    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
-    
-    # JWT Error Handlers
-    @jwt.invalid_token_loader
-    def invalid_token_callback(error):
-        print(f"❌ JWT Invalid Token: {error}")
-        return jsonify({'error': 'Invalid token', 'message': error}), 422
-
-    @jwt.unauthorized_loader
-    def missing_token_callback(error):
-        print(f"❌ JWT Missing Token: {error}")
-        return jsonify({'error': 'Authorization required', 'message': error}), 401
-
-    @jwt.expired_token_loader
-    def expired_token_callback(jwt_header, jwt_payload):
-        print(f"❌ JWT Expired: {jwt_payload}")
-        return jsonify({'error': 'Token expired', 'message': 'Please login again'}), 401
-    
-    # Create database tables
-    with app.app_context():
-        db.create_all()
-        print("Database initialized successfully")
     
     # Initialize and start scheduler
     try:
