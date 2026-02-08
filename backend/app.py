@@ -36,6 +36,16 @@ def create_app():
     
     # Initialize OAuth
     init_oauth(app)
+
+    # Run Database Migrations (Auto-fix for Render)
+    try:
+        from migrate_account_features import migrate_database
+        with app.app_context():
+            print("🔄 Running automatic database migration...")
+            migrate_database()
+            print("✅ Database migration finished")
+    except Exception as e:
+        print(f"⚠️ Automatic migration failed: {e}")
     
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
