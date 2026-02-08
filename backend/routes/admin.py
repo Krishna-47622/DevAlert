@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Hackathon, Internship, User, Notification
+from models import db, Hackathon, Internship, User, Notification, Application
 from sqlalchemy import func
 
 admin_bp = Blueprint('admin', __name__)
@@ -197,6 +197,17 @@ def delete_user(user_id):
         user = User.query.get(user_id)
         if not user:
             return jsonify({"error": "User not found"}), 404
+        
+        # 1. Delete user's notifications (CASCADE)
+        Notification.query.filter_by(user_id=user_id).delete()
+
+        # 2. Delete user's applications (CASCADE)
+        from models import Application
+        Application.query.filter_by(user_id=user_id).delete()
+
+        # 3. Unlink hosted opportunities (Set host_id = NULL)
+        Hackathon.query.filter_by(host_id=user_id).update({'host_id': None})
+        Internship.query.filter_by(host_id=user_id).update({'host_id': None})
         
         db.session.delete(user)
         db.session.commit()
