@@ -15,4 +15,4 @@ services:
     staticPublishPath: ./frontend/dist
     envVars:
       - key: VITE_API_URL
-        value: https://<your-backend-url>.onrender.com/api
+        value: "https://CHANGE_ME_TO_BACKEND_URL.onrender.com/api"
