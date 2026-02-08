@@ -75,6 +75,24 @@ MAIL_PASSWORD=<your-app-password>
 
 ---
 
+## 🌐 Step 4: Deploy Frontend (Static Site)
+
+1. **Render Blueprint (Recommended)**
+   - Render should auto-detect the changes in `render.yaml` and create the `devalert-frontend` service.
+   - Go to the new Frontend Service -> Environment.
+   - Update `VITE_API_URL` to your **Backend URL** + `/api` (e.g., `https://devalert-backend.onrender.com/api`).
+
+2. **Manual Setup (If Blueprints fail)**
+   - Create **New Static Site** on Render.
+   - Connect your GitHub repo.
+   - **Build Command:** `cd frontend && npm install && npm run build`
+   - **Publish Directory:** `frontend/dist`
+   - **Environment Variables:**
+     - Key: `VITE_API_URL`
+     - Value: `https://<your-backend-name>.onrender.com/api` (Don't forget the `/api` at the end!)
+
+---
+
 ## 🐛 Troubleshooting
 
 **Database Reset / Missing Columns:**
