@@ -75,8 +75,11 @@ def register():
         frontend_url = current_app.config.get('FRONTEND_URL')
         try:
             send_verification_email(user, frontend_url)
+            # Also send welcome email
+            from services.email_service import send_welcome_email
+            send_welcome_email(user, frontend_url)
         except Exception as e:
-            print(f"Warning: Could not send verification email: {e}")
+            print(f"Warning: Could not send email: {e}")
         
         # Create access token
         access_token = create_access_token(identity=str(user.id))

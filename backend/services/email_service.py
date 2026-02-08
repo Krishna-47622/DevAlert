@@ -177,3 +177,23 @@ def send_2fa_enabled_notification(user):
         html_body
     )).start()
     return True
+
+def send_welcome_email(user, base_url):
+    """Send welcome email to new user"""
+    html_body = f"""
+    <h1>Welcome to DevAlert! 🚀</h1>
+    <p>Hi {user.username},</p>
+    <p>Thanks for joining DevAlert! We're excited to have you on board.</p>
+    <p>Explore hackathons, internships, and more on our platform.</p>
+    <br>
+    <p>Best regards,</p>
+    <p>The DevAlert Team</p>
+    """
+    
+    Thread(target=send_async_email, args=(
+        current_app._get_current_object(),
+        user.email,
+        "Welcome to DevAlert!",
+        html_body
+    )).start()
+    return True

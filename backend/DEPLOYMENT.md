@@ -35,13 +35,12 @@
 2. Click your OAuth 2.0 Client ID
 3. Add to **"Authorized redirect URIs"**:
    ```
-   https://YOUR-APP-NAME.onrender.com/api/auth/oauth/google/callback
+   https://devalert-live.onrender.com/api/auth/oauth/google/callback
    ```
-   *(Replace YOUR-APP-NAME with your actual Render app name)*
 
 4. **Authorized JavaScript origins**:
    ```
-   https://YOUR-APP-NAME.onrender.com
+   https://devalert-live.onrender.com
    ```
 
 ---
@@ -59,7 +58,7 @@ JWT_SECRET_KEY=<random-string>
 DATABASE_URL=<postgresql-url>
 
 # Frontend
-FRONTEND_URL=https://YOUR-APP-NAME.onrender.com
+FRONTEND_URL=https://devalert-live.onrender.com
 
 # Google OAuth
 GOOGLE_OAUTH_CLIENT_ID=<your-prod-client-id>
