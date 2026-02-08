@@ -19,33 +19,54 @@ def generate_token(length=32):
     return secrets.token_urlsafe(length)
 
 def send_email_via_mailgun(to, subject, html_body):
-    """Send email using Mailgun API (Bypasses SMTP port blocking)"""
+    """Send email using Mailgun API"""
     api_key = current_app.config.get('MAILGUN_API_KEY')
     domain = current_app.config.get('MAILGUN_DOMAIN')
     sender = current_app.config.get('MAIL_FROM_EMAIL')
     
-    if not api_key or not domain:
-        print("❌ Mailgun API Key or Domain missing!")
-        return False
-        
     try:
         response = requests.post(
             f"https://api.mailgun.net/v3/{domain}/messages",
             auth=("api", api_key),
-            data={"from": f"DevAlert <{sender}>",
-                  "to": [to],
-                  "subject": subject,
-                  "html": html_body}
+            data={"from": f"DevAlert <{sender}>", "to": [to], "subject": subject, "html": html_body}
         )
-        
-        if response.status_code == 200:
-            print(f"✅ Mailgun email sent to {to}")
-            return True
-        else:
-            print(f"❌ Mailgun failed: {response.status_code} - {response.text}")
-            return False
+        return response.status_code == 200
     except Exception as e:
         print(f"❌ Mailgun error: {e}")
+        return False
+
+def send_email_via_brevo(to, subject, html_body):
+    """Send email using Brevo (Sendinblue) API"""
+    api_key = current_app.config.get('BREVO_API_KEY')
+    sender_email = current_app.config.get('MAIL_FROM_EMAIL')
+    
+    if not api_key:
+        print("❌ Brevo API Key missing!")
+        return False
+        
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {"email": sender_email, "name": "DevAlert"},
+        "to": [{"email": to}],
+        "subject": subject,
+        "htmlContent": html_body
+    }
+    
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        if response.status_code in [200, 201]:
+            print(f"✅ Brevo email sent to {to}")
+            return True
+        else:
+            print(f"❌ Brevo failed: {response.text}")
+            return False
+    except Exception as e:
+        print(f"❌ Brevo error: {e}")
         return False
 
 def send_async_email(app, to, subject, html_body):
@@ -57,6 +78,8 @@ def send_async_email(app, to, subject, html_body):
             
             if service == 'mailgun':
                 send_email_via_mailgun(to, subject, html_body)
+            elif service == 'brevo':
+                send_email_via_brevo(to, subject, html_body)
             else:
                 # Fallback to SMTP
                 msg = Message(subject=subject, recipients=[to], html=html_body)

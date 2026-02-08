@@ -47,10 +47,16 @@ class Config:
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     
     # Email settings - Mailgun API
-    MAIL_SERVICE = 'mailgun'  # 'smtp' or 'mailgun'
+    MAIL_SERVICE = os.getenv('MAIL_SERVICE', 'brevo')  # 'smtp', 'mailgun', or 'brevo'
+    
+    # Mailgun
     MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY', '')
     MAILGUN_DOMAIN = os.getenv('MAILGUN_DOMAIN', '')
-    MAIL_FROM_EMAIL = os.getenv('MAIL_FROM_EMAIL', f'noreply@{MAILGUN_DOMAIN}' if MAILGUN_DOMAIN else 'noreply@devalert.com')
+    
+    # Brevo (Sendinblue)
+    BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+    
+    MAIL_FROM_EMAIL = os.getenv('MAIL_FROM_EMAIL', 'noreply@devalert.com')
     
     # Legacy SMTP settings (kept for reference)
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
