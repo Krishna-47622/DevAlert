@@ -8,11 +8,11 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.5
 
-  - type: static
+  - type: web
     name: devalert-frontend
     env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     envVars:
       - key: VITE_API_URL
-        value: "https://CHANGE_ME_TO_BACKEND_URL.onrender.com/api"
+        value: "https://devalert-live.onrender.com/api"
