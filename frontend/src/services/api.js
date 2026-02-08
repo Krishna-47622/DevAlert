@@ -40,6 +40,24 @@ export const authAPI = {
     register: (data) => api.post('/auth/register', data),
     login: (data) => api.post('/auth/login', data),
     getCurrentUser: () => api.get('/auth/me'),
+
+    // Email Verification
+    verifyEmail: (token) => api.get(`/auth/verify-email/${token}`),
+    resendVerification: () => api.post('/auth/resend-verification'),
+
+    // Password Reset
+    forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+    resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, new_password: newPassword }),
+    changePassword: (currentPassword, newPassword) => api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword }),
+
+    // Two-Factor Authentication
+    setup2FA: () => api.post('/auth/2fa/setup'),
+    enable2FA: (code) => api.post('/auth/2fa/enable', { code }),
+    disable2FA: (code) => api.post('/auth/2fa/disable', { code }),
+
+    // OAuth
+    oauthGoogle: () => window.location.href = '/api/auth/oauth/google',
+    oauthGitHub: () => window.location.href = '/api/auth/oauth/github',
 };
 
 // Hackathons API

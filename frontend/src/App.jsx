@@ -14,6 +14,10 @@ import ApplicantsPage from './pages/ApplicantsPage';
 import HostEventPage from './pages/HostEventPage';
 import ApplicationPage from './pages/ApplicationPage';
 import NotificationsPage from './pages/NotificationsPage';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
+import AccountSettings from './pages/AccountSettings';
 import './index.css';
 
 function PrivateRoute({ children, adminOnly = false }) {
@@ -37,6 +41,9 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+        <Route path="/forgot-password" element={<PageTransition><ForgotPassword /></PageTransition>} />
+        <Route path="/reset-password/:token" element={<PageTransition><ResetPassword /></PageTransition>} />
+        <Route path="/verify-email/:token" element={<PageTransition><VerifyEmail /></PageTransition>} />
         <Route
           path="/"
           element={
@@ -82,6 +89,14 @@ function AnimatedRoutes() {
           element={
             <PrivateRoute>
               <PageTransition><NotificationsPage /></PageTransition>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <PrivateRoute>
+              <PageTransition><AccountSettings /></PageTransition>
             </PrivateRoute>
           }
         />

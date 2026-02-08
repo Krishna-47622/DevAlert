@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 
@@ -7,6 +7,27 @@ export default function Login() {
     const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // Listen for OAuth popup messages
+    useEffect(() => {
+        const handleOAuthMessage = (event) => {
+            // Security: verify origin
+            if (event.origin !== window.location.origin) return;
+
+            if (event.data.type === 'oauth_success') {
+                const { token, user } = event.data;
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
+                navigate('/');
+            } else if (event.data.type === 'oauth_error') {
+                setError(event.data.error || 'OAuth login failed');
+                setLoading(false);
+            }
+        };
+
+        window.addEventListener('message', handleOAuthMessage);
+        return () => window.removeEventListener('message', handleOAuthMessage);
+    }, [navigate]);
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -86,6 +107,22 @@ export default function Login() {
                                             onChange={handleChange}
                                             required
                                         />
+                                        <div style={{ marginTop: '0.5rem', textAlign: 'right' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate('/forgot-password')}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--color-accent)',
+                                                    fontSize: '0.875rem',
+                                                    cursor: 'pointer',
+                                                    textDecoration: 'underline'
+                                                }}
+                                            >
+                                                Forgot Password?
+                                            </button>
+                                        </div>
                                     </div>
                                 </>
                             ) : (
@@ -184,6 +221,49 @@ export default function Login() {
                             </button>
                         </form>
 
+                        {isLogin && (
+                            <>
+                                <div style={{ textAlign: 'center', margin: '1.5rem 0', color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+                                    Or continue with
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        setLoading(true);
+                                        const width = 500;
+                                        const height = 600;
+                                        const left = (window.screen.width / 2) - (width / 2);
+                                        const top = (window.screen.height / 2) - (height / 2);
+                                        window.open(
+                                            '/api/auth/oauth/google',
+                                            'GoogleOAuth',
+                                            `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+                                        );
+                                    }}
+                                    className="btn"
+                                    style={{
+                                        width: '100%',
+                                        background: 'white',
+                                        color: '#333',
+                                        border: '1px solid var(--color-border)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem'
+                                    }}
+                                    type="button"
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 18 18">
+                                        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"></path>
+                                        <path fill="#34A853" d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z"></path>
+                                        <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"></path>
+                                        <path fill="#EA4335" d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z"></path>
+                                    </svg>
+                                    Sign in with Google
+                                </button>
+                            </>
+                        )}
+
                         <div className="text-center mt-3">
                             <button
                                 onClick={() => setIsLogin(!isLogin)}
@@ -201,6 +281,6 @@ export default function Login() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

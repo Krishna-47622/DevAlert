@@ -11,7 +11,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required
 from config import Config
 from models import db
-from routes.auth import auth_bp
+from routes.auth import auth_bp, init_oauth
 from routes.hackathons import hackathons_bp
 from routes.internships import internships_bp
 from routes.admin import admin_bp
@@ -29,6 +29,13 @@ def create_app():
     CORS(app, origins=Config.CORS_ORIGINS)
     db.init_app(app)
     jwt = JWTManager(app)
+    
+    # Initialize Flask-Mail
+    from services.email_service import init_mail
+    init_mail(app)
+    
+    # Initialize OAuth
+    init_oauth(app)
     
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')

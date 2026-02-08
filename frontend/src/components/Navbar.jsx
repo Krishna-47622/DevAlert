@@ -73,6 +73,9 @@ export default function Navbar() {
                                 <li>
                                     <Magnetic><NavLink to="/applicant" className={navLinkClass}>Opportunities</NavLink></Magnetic>
                                 </li>
+                                <li>
+                                    <Magnetic><NavLink to="/settings" className={navLinkClass}>Settings</NavLink></Magnetic>
+                                </li>
                                 <li style={{ position: 'relative' }}>
                                     <Magnetic>
                                         <button

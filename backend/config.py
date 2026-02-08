@@ -46,6 +46,26 @@ class Config:
     # Gemini AI settings
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     
+    # Email settings
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
+    MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')
+    MAIL_FROM_EMAIL = os.getenv('MAIL_FROM_EMAIL', 'noreply@devalert.com')
+    
+    # Frontend URL (for email links)
+    FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    
+    # OAuth - Google
+    GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '')
+    GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET', '')
+    
+    # OAuth - GitHub
+    GITHUB_OAUTH_CLIENT_ID = os.getenv('GITHUB_OAUTH_CLIENT_ID', '')
+    GITHUB_OAUTH_CLIENT_SECRET = os.getenv('GITHUB_OAUTH_CLIENT_SECRET', '')
+    
     # CORS settings
     CORS_ORIGINS = ['http://localhost:5173', 'http://localhost:5000']
     

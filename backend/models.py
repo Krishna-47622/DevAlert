@@ -11,13 +11,30 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=True)  # Nullable for OAuth users
     role = db.Column(db.String(20), default='participant') # admin, hoster, participant
     organization = db.Column(db.String(200)) # For hosters
     designation = db.Column(db.String(200)) # For hosters
     is_host_approved = db.Column(db.Boolean, default=False)
     requested_host_access = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Email Verification
+    email_verified = db.Column(db.Boolean, default=False)
+    email_verification_token = db.Column(db.String(255), nullable=True)
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)
+    
+    # Password Reset
+    password_reset_token = db.Column(db.String(255), nullable=True)
+    password_reset_expires_at = db.Column(db.DateTime, nullable=True)
+    
+    # Two-Factor Authentication
+    two_factor_enabled = db.Column(db.Boolean, default=False)
+    two_factor_secret = db.Column(db.String(32), nullable=True)
+    
+    # OAuth Integration
+    oauth_provider = db.Column(db.String(20), nullable=True)  # 'google', 'github', or None
+    oauth_provider_id = db.Column(db.String(255), nullable=True)  # Provider's user ID
     
     # Relationships
     applications = db.relationship('Application', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -41,6 +58,9 @@ class User(db.Model):
             'designation': self.designation,
             'is_host_approved': self.is_host_approved,
             'requested_host_access': self.requested_host_access,
+            'email_verified': self.email_verified,
+            'two_factor_enabled': self.two_factor_enabled,
+            'oauth_provider': self.oauth_provider,
             'created_at': self.created_at.isoformat()
         }
 

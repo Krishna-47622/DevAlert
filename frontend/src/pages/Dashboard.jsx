@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminAPI, hackathonsAPI, internshipsAPI } from '../services/api';
 import Card, { CardHeader, CardBody } from '../components/Card';
 
 export default function Dashboard() {
+    const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [recentHackathons, setRecentHackathons] = useState([]);
     const [recentInternships, setRecentInternships] = useState([]);
@@ -30,6 +32,10 @@ export default function Dashboard() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCardClick = (type, id) => {
+        navigate(`/applicant?type=${type}&id=${id}`);
     };
 
     if (loading) {
@@ -106,7 +112,11 @@ export default function Dashboard() {
             <div className="grid grid-3 mb-4">
                 {recentHackathons.length > 0 ? (
                     recentHackathons.map((hackathon) => (
-                        <Card key={hackathon.id}>
+                        <Card
+                            key={hackathon.id}
+                            onClick={() => handleCardClick('hackathon', hackathon.id)}
+                            style={{ cursor: 'pointer' }}
+                        >
                             <CardHeader>{hackathon.title}</CardHeader>
                             <CardBody>
                                 <p><strong>Organizer:</strong> {hackathon.organizer}</p>
@@ -125,7 +135,11 @@ export default function Dashboard() {
             <div className="grid grid-3">
                 {recentInternships.length > 0 ? (
                     recentInternships.map((internship) => (
-                        <Card key={internship.id}>
+                        <Card
+                            key={internship.id}
+                            onClick={() => handleCardClick('internship', internship.id)}
+                            style={{ cursor: 'pointer' }}
+                        >
                             <CardHeader>{internship.title}</CardHeader>
                             <CardBody>
                                 <p><strong>Company:</strong> {internship.company}</p>

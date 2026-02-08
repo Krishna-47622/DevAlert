@@ -4,6 +4,7 @@
 :root {
   /* Antigravity Theme Colors */
   --primary-color: #6366f1;
+  --primary-color-rgb: 99, 102, 241;
   /* Indigo - Antigravity Brnd */
   --primary-glow: 0 0 15px rgba(99, 102, 241, 0.6);
   --secondary-color: #a1a1aa;

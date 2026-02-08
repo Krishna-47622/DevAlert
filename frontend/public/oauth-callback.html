@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Authentication</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            color: white;
+        }
+        .container {
+            text-align: center;
+        }
+        .loading {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .message {
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        .error {
+            background: rgba(220, 38, 38, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading"></div>
+        <div class="message" id="message">Completing authentication...</div>
+    </div>
+
+    <script>
+        // Get token and user from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const userParam = urlParams.get('user');
+        const error = urlParams.get('error');
+
+        const messageEl = document.getElementById('message');
+
+        if (error) {
+            messageEl.textContent = 'Authentication failed';
+            document.querySelector('.container').innerHTML += `<div class="error">${error}</div>`;
+            
+            // Send error to parent window
+            if (window.opener) {
+                window.opener.postMessage({
+                    type: 'oauth_error',
+                    error: error
+                }, window.location.origin);
+                
+                // Close popup after delay
+                setTimeout(() => window.close(), 3000);
+            }
+        } else if (token && userParam) {
+            try {
+                const user = JSON.parse(decodeURIComponent(userParam));
+                
+                messageEl.textContent = 'Success! Redirecting...';
+                
+                // Send success to parent window
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'oauth_success',
+                        token: token,
+                        user: user
+                    }, window.location.origin);
+                    
+                    // Close popup
+                    setTimeout(() => window.close(), 1000);
+                } else {
+                    // Fallback: if no opener, save locally and redirect
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('user', JSON.stringify(user));
+                    window.location.href = '/';
+                }
+            } catch (err) {
+                messageEl.textContent = 'Error parsing authentication data';
+                console.error(err);
+                setTimeout(() => window.close(), 2000);
+            }
+        } else {
+            messageEl.textContent = 'Invalid authentication response';
+            setTimeout(() => window.close(), 2000);
+        }
+    </script>
+</body>
+</html>
