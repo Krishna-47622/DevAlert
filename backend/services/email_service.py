@@ -87,6 +87,10 @@ def send_verification_email(user, base_url):
         def send_async_email(app, msg):
             with app.app_context():
                 try:
+                    # Debug logging
+                    print(f"📧 Sending verification email via {app.config['MAIL_SERVER']}:{app.config['MAIL_PORT']}")
+                    print(f"   TLS: {app.config['MAIL_USE_TLS']}, SSL: {app.config['MAIL_USE_SSL']}")
+                    
                     mail.send(msg)
                     print(f"✅ Verification email sent to {msg.recipients}")
                 except Exception as e:
@@ -172,6 +176,10 @@ def send_password_reset_email(user, base_url):
         def send_async_email(app, msg):
             with app.app_context():
                 try:
+                    # Debug logging
+                    print(f"📧 Sending password reset via {app.config['MAIL_SERVER']}:{app.config['MAIL_PORT']}")
+                    print(f"   TLS: {app.config['MAIL_USE_TLS']}, SSL: {app.config['MAIL_USE_SSL']}")
+                    
                     mail.send(msg)
                     print(f"✅ Password reset email sent to {msg.recipients}")
                 except Exception as e:
@@ -235,6 +243,10 @@ def send_2fa_enabled_notification(user):
         def send_async_email(app, msg):
             with app.app_context():
                 try:
+                    # Debug logging for SMTP config
+                    print(f"📧 Sending email to {msg.recipients} via {app.config['MAIL_SERVER']}:{app.config['MAIL_PORT']}")
+                    print(f"   TLS: {app.config['MAIL_USE_TLS']}, SSL: {app.config['MAIL_USE_SSL']}")
+                    
                     mail.send(msg)
                     print(f"✅ Email sent to {msg.recipients}")
                 except Exception as e:
