@@ -30,10 +30,13 @@ def send_email_via_mailgun(to, subject, html_body):
             auth=("api", api_key),
             data={"from": f"DevAlert <{sender}>", "to": [to], "subject": subject, "html": html_body}
         )
-        return response.status_code == 200
+        if response.status_code == 200:
+            return True, None
+        else:
+            return False, f"Mailgun Failed: {response.text}"
     except Exception as e:
         print(f"❌ Mailgun error: {e}")
-        return False
+        return False, str(e)
 
 def send_email_via_brevo(to, subject, html_body):
     """Send email using Brevo (Sendinblue) API"""
@@ -42,7 +45,7 @@ def send_email_via_brevo(to, subject, html_body):
     
     if not api_key:
         print("❌ Brevo API Key missing!")
-        return False
+        return False, "Brevo API Key missing"
         
     url = "https://api.brevo.com/v3/smtp/email"
     headers = {
@@ -61,13 +64,13 @@ def send_email_via_brevo(to, subject, html_body):
         response = requests.post(url, json=payload, headers=headers)
         if response.status_code in [200, 201]:
             print(f"✅ Brevo email sent to {to}")
-            return True
+            return True, None
         else:
             print(f"❌ Brevo failed: {response.text}")
-            return False
+            return False, f"Brevo Error: {response.text}"
     except Exception as e:
         print(f"❌ Brevo error: {e}")
-        return False
+        return False, str(e)
 
 def send_async_email(app, to, subject, html_body):
     """Send email asynchronously using configured service"""

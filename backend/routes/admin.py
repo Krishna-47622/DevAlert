@@ -384,23 +384,23 @@ def test_email_config():
         if mail_service == 'mailgun':
             # --- TEST MAILGUN ---
             print("Trying Mailgun API...")
-            success = send_email_via_mailgun(recipient, "DevAlert Mailgun Test", "<h1>It Works!</h1>")
+            success, error = send_email_via_mailgun(recipient, "DevAlert Mailgun Test", "<h1>It Works!</h1>")
             
             if success:
                 return jsonify({'message': 'Mailgun email sent!', 'service': 'mailgun'}), 200
             else:
-                return jsonify({'message': 'Mailgun failed.', 'service': 'mailgun'}), 500
+                return jsonify({'message': 'Mailgun failed.', 'service': 'mailgun', 'error': error}), 500
 
         elif mail_service == 'brevo':
             # --- TEST BREVO ---
             from services.email_service import send_email_via_brevo
             print("Trying Brevo API...")
-            success = send_email_via_brevo(recipient, "DevAlert Brevo Test", "<h1>It Works!</h1><p>Brevo is connected.</p>")
+            success, error = send_email_via_brevo(recipient, "DevAlert Brevo Test", "<h1>It Works!</h1><p>Brevo is connected.</p>")
             
             if success:
                 return jsonify({'message': 'Brevo email sent successfully!', 'service': 'brevo'}), 200
             else:
-                return jsonify({'message': 'Brevo failed to send.', 'service': 'brevo'}), 500
+                return jsonify({'message': 'Brevo failed.', 'service': 'brevo', 'error': error}), 500
                 
         else:
             # --- TEST SMTP (Legacy Probe) ---
