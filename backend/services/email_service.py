@@ -8,6 +8,14 @@ from flask_mail import Mail, Message
 import secrets
 from threading import Thread
 
+import logging
+
+# Configure logging to console (Render captures stdout/stderr)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
 mail = Mail()
 
 def init_mail(app):
@@ -64,12 +72,15 @@ def send_email_via_brevo(to, subject, html_body):
         response = requests.post(url, json=payload, headers=headers)
         if response.status_code in [200, 201]:
             print(f"✅ Brevo email sent to {to}")
+            logging.info(f"✅ Brevo email sent successfully to {to}")
             return True, None
         else:
             print(f"❌ Brevo failed: {response.text}")
+            logging.error(f"❌ Brevo failed to {to}: {response.text}")
             return False, f"Brevo Error: {response.text}"
     except Exception as e:
         print(f"❌ Brevo error: {e}")
+        logging.error(f"❌ Brevo exception for {to}: {str(e)}")
         return False, str(e)
 
 def send_async_email(app, to, subject, html_body):
@@ -91,6 +102,7 @@ def send_async_email(app, to, subject, html_body):
                 
         except Exception as e:
             print(f"❌ Async email error: {e}")
+            logging.error(f"❌ Async email error for {to}: {str(e)}")
 
 def send_verification_email(user, base_url):
     """Send email verification email"""
