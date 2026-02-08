@@ -106,67 +106,54 @@ def extract_domain(url):
         return 'web'
 
 def scrape_unstop(category="hackathons"):
-    """Scrape Unstop for opportunities with robust headers"""
+    """Scrape Unstop using their public API"""
     try:
-        from bs4 import BeautifulSoup
-        url = f"https://unstop.com/{category}"
+        # Use Unstop's public API for reliable results
+        # Endpoint: https://unstop.com/api/public/opportunity/search-result
+        url = "https://unstop.com/api/public/opportunity/search-result"
+        params = {
+            'opportunity': category,
+            'per_page': 10,
+            'oppstatus': 'open'
+        }
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'application/json, text/plain, */*',
         }
         
-        response = requests.get(url, headers=headers, timeout=15)
-        soup = BeautifulSoup(response.text, 'html.parser')
+        print(f"DEBUG: Fetching Unstop API for {category}...")
+        response = requests.get(url, params=params, headers=headers, timeout=15)
+        
+        if response.status_code != 200:
+             print(f"⚠️ Unstop API failed: {response.status_code}")
+             return []
+             
+        data = response.json()
         results = []
         
-        # Scrape links that match the category pattern
-        # Unstop links are often like unstop.com/hackathons/name-123
-        pattern = f'/{category}/'
-        
-        # Look for cards or similar structures if possible
-        # Unstop uses various classes like 'opportunity-card', 'card-wrapper', or generic '<a>' tags with specific paths
-        found_links = set()
-        
-        # Try more specific card selectors first
-        cards = soup.select('.opportunity-card, .card-content, .card-wrapper')
-        if cards:
-            for card in cards:
-                link = card.select_one('a[href]')
-                if link and pattern in link['href']:
-                    href = link['href']
-                    title = card.get_text().strip().split('\n')[0]
-                    if href not in found_links and len(title) > 5:
-                        results.append({
-                            'title': title[:100],
-                            'link': f"https://unstop.com{href}" if href.startswith('/') else href,
-                            'snippet': f"Active {category[:-1]} on Unstop.",
-                            'source': 'unstop'
-                        })
-                        found_links.add(href)
-
-        # Fallback to all links if cards didn't surface enough
-        if len(results) < 5:
-            for link in soup.find_all('a', href=True):
-                href = link['href']
-                if pattern in href and href not in found_links:
-                    text = link.get_text().strip()
-                    # Skip very short or generic text
-                    if not text or len(text) < 10:
-                        continue
-                        
+        if 'data' in data and 'data' in data['data']:
+            items = data['data']['data']
+            for item in items:
+                # Extract relevant fields
+                title = item.get('title', 'Unknown Event')
+                seo_url = item.get('seo_url', '')
+                logo_url = item.get('logoUrl2', '') # Optional
+                
+                # Construct full link
+                link = f"https://unstop.com/{seo_url}" if seo_url else ""
+                
+                if link:
                     results.append({
-                        'title': text.split('\n')[0][:100],
-                        'link': f"https://unstop.com{href}" if href.startswith('/') else href,
-                        'snippet': f"Explore this {category[:-1]} on Unstop.",
+                        'title': title,
+                        'link': link,
+                        'snippet': f"Active {category[:-1]} on Unstop. Organized by {item.get('organisation', {}).get('name', 'Unstop found')}.",
                         'source': 'unstop'
                     })
-                    found_links.add(href)
-                    
-        print(f"DEBUG: Scraper found {len(results)} items on Unstop {category}")
-        return results[:10]
+        
+        print(f"DEBUG: Unstop API found {len(results)} items")
+        return results
     except Exception as e:
-        print(f"⚠️ Unstop {category} scrape error: {e}")
+        print(f"⚠️ Unstop {category} API error: {e}")
         return []
 
 def scrape_devpost():
