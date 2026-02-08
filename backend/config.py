@@ -68,7 +68,7 @@ class Config:
     MAIL_FROM_EMAIL = os.getenv('MAIL_FROM_EMAIL', 'noreply@devalert.com')
     
     # Frontend URL (for email links)
-    FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    FRONTEND_URL = os.getenv('FRONTEND_URL') or os.getenv('RENDER_EXTERNAL_URL', 'http://localhost:5173')
     
     # OAuth - Google
     GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '')
