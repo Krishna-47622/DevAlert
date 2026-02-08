@@ -46,7 +46,13 @@ class Config:
     # Gemini AI settings
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     
-    # Email settings
+    # Email settings - Mailgun API
+    MAIL_SERVICE = 'mailgun'  # 'smtp' or 'mailgun'
+    MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY', '')
+    MAILGUN_DOMAIN = os.getenv('MAILGUN_DOMAIN', '')
+    MAIL_FROM_EMAIL = os.getenv('MAIL_FROM_EMAIL', f'noreply@{MAILGUN_DOMAIN}' if MAILGUN_DOMAIN else 'noreply@devalert.com')
+    
+    # Legacy SMTP settings (kept for reference)
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
     MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'

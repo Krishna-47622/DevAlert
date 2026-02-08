@@ -358,11 +358,12 @@ def approve_host(user_id):
 @admin_bp.route('/test-email', methods=['POST'])
 @jwt_required()
 def test_email_config():
-    """Run SMTP diagnostics (non-blocking probe)"""
+    """Run Email Diagnostics (SMTP or Mailgun)"""
     import smtplib
     import socket
     import ssl
     from flask import current_app
+    from services.email_service import send_email_via_mailgun
     
     results = {}
     
@@ -377,55 +378,78 @@ def test_email_config():
         data = request.get_json()
         recipient = data.get('email', user.email)
         
-        # Load config
-        mail_server = current_app.config['MAIL_SERVER']
-        mail_username = current_app.config['MAIL_USERNAME']
-        mail_password = current_app.config['MAIL_PASSWORD']
+        # Check Service Type
+        mail_service = current_app.config.get('MAIL_SERVICE', 'smtp')
         
-        # --- TEST 1: Port 587 (TLS) ---
-        results['port_587'] = {'status': 'pending'}
-        try:
-            print("Trying SMTP 587...")
-            with smtplib.SMTP(mail_server, 587, timeout=5) as server:
-                server.set_debuglevel(1)
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(mail_username, mail_password)
-                results['port_587'] = {'status': 'success', 'message': 'Auth successful'}
-                
-                # Try sending
-                msg = f"Subject: DevAlert Test (587)\n\nTest from Port 587."
-                server.sendmail(mail_username, recipient, msg)
-                results['port_587']['send'] = 'success'
-        except Exception as e:
-            results['port_587'] = {'status': 'failed', 'error': str(e)}
+        if mail_service == 'mailgun':
+            # --- TEST MAILGUN ---
+            print("Trying Mailgun API...")
+            success = send_email_via_mailgun(recipient, "DevAlert Mailgun Test", "<h1>It Works!</h1><p>Mailgun is configured correctly.</p>")
+            
+            if success:
+                return jsonify({
+                    'message': 'Mailgun email sent successfully!',
+                    'service': 'mailgun',
+                    'status': 'success'
+                }), 200
+            else:
+                return jsonify({
+                    'message': 'Mailgun failed to send.',
+                    'service': 'mailgun',
+                    'status': 'failed',
+                    'check_logs': True
+                }), 500
+        else:
+            # --- TEST SMTP (Legacy Probe) ---
+            # Load config
+            mail_server = current_app.config['MAIL_SERVER']
+            mail_username = current_app.config['MAIL_USERNAME']
+            mail_password = current_app.config['MAIL_PASSWORD']
+            
+            # --- TEST 1: Port 587 (TLS) ---
+            results['port_587'] = {'status': 'pending'}
+            try:
+                print("Trying SMTP 587...")
+                with smtplib.SMTP(mail_server, 587, timeout=5) as server:
+                    server.set_debuglevel(1)
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                    server.login(mail_username, mail_password)
+                    results['port_587'] = {'status': 'success', 'message': 'Auth successful'}
+                    
+                    # Try sending
+                    msg = f"Subject: DevAlert Test (587)\n\nTest from Port 587."
+                    server.sendmail(mail_username, recipient, msg)
+                    results['port_587']['send'] = 'success'
+            except Exception as e:
+                results['port_587'] = {'status': 'failed', 'error': str(e)}
 
-        # --- TEST 2: Port 465 (SSL) ---
-        results['port_465'] = {'status': 'pending'}
-        try:
-            print("Trying SMTP 465...")
-            context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(mail_server, 465, timeout=5, context=context) as server:
-                server.login(mail_username, mail_password)
-                results['port_465'] = {'status': 'success', 'message': 'Auth successful'}
-                
-                # Try sending
-                msg = f"Subject: DevAlert Test (465)\n\nTest from Port 465."
-                server.sendmail(mail_username, recipient, msg)
-                results['port_465']['send'] = 'success'
-        except Exception as e:
-            results['port_465'] = {'status': 'failed', 'error': str(e)}
+            # --- TEST 2: Port 465 (SSL) ---
+            results['port_465'] = {'status': 'pending'}
+            try:
+                print("Trying SMTP 465...")
+                context = ssl.create_default_context()
+                with smtplib.SMTP_SSL(mail_server, 465, timeout=5, context=context) as server:
+                    server.login(mail_username, mail_password)
+                    results['port_465'] = {'status': 'success', 'message': 'Auth successful'}
+                    
+                    # Try sending
+                    msg = f"Subject: DevAlert Test (465)\n\nTest from Port 465."
+                    server.sendmail(mail_username, recipient, msg)
+                    results['port_465']['send'] = 'success'
+            except Exception as e:
+                results['port_465'] = {'status': 'failed', 'error': str(e)}
 
-        return jsonify({
-            'message': 'Diagnostics complete',
-            'results': results,
-            'config': {
-                'server': mail_server,
-                'username_provided': bool(mail_username),
-                'password_provided': bool(mail_password)
-            }
-        }), 200
+            return jsonify({
+                'message': 'SMTP Diagnostics complete',
+                'results': results,
+                'config': {
+                    'server': mail_server,
+                    'username_provided': bool(mail_username),
+                    'password_provided': bool(mail_password)
+                }
+            }), 200
 
     except Exception as e:
         import traceback
