@@ -37,6 +37,15 @@ def create_app():
     # Initialize OAuth
     init_oauth(app)
 
+    # Register Blueprints
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(hackathons_bp, url_prefix='/api/hackathons')
+    app.register_blueprint(internships_bp, url_prefix='/api/internships')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(applications_bp, url_prefix='/api/applications')
+    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+    app.register_blueprint(scanner_bp, url_prefix='/api/scanner')
+
     # Create database tables FIRST
     with app.app_context():
         db.create_all()
