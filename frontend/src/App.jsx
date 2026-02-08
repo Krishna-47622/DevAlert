@@ -18,6 +18,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import AccountSettings from './pages/AccountSettings';
+import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
 function PrivateRoute({ children, adminOnly = false }) {
@@ -110,14 +111,16 @@ function AnimatedRoutes() {
 function App() {
   return (
     <Router>
-      <SmoothScroll>
-        <div className="app">
-          <Cursor />
-          <DeveloperBackground />
-          <Navbar />
-          <AnimatedRoutes />
-        </div>
-      </SmoothScroll>
+      <ErrorBoundary>
+        <SmoothScroll>
+          <div className="app">
+            <Cursor />
+            <DeveloperBackground />
+            <Navbar />
+            <AnimatedRoutes />
+          </div>
+        </SmoothScroll>
+      </ErrorBoundary>
     </Router>
   );
 }
