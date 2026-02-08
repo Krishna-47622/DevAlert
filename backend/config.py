@@ -19,10 +19,14 @@ class Config:
         # OR use the provided DATABASE_URL if it's Postgres
         db_url = os.getenv('DATABASE_URL')
         if db_url and 'postgres' in db_url:
+            # Fix for SQLAlchemy requiring postgresql:// instead of postgres://
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
             SQLALCHEMY_DATABASE_URI = db_url
+            print("🚀 Running on Render: Using PostgreSQL Database")
         else:
             SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/devalert.db'
-            print("🚀 Running on Render: Using /tmp/devalert.db")
+            print("⚠️ Running on Render: Using EPHEMERAL SQLite (Data lost on restart)")
     else:
         # Local development
         instance_path = os.path.join(basedir, "instance")
