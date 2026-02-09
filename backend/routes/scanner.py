@@ -184,7 +184,15 @@ def scrape_unstop(category="hackathons"):
             for item in items:
                 title = item.get('title', 'Unknown Event')
                 seo_url = item.get('seo_url', '')
-                link = f"https://unstop.com/{seo_url}" if seo_url else ""
+                if not seo_url: continue
+                
+                # Check if seo_url is already a full URL
+                if seo_url.startswith(('http://', 'https://')):
+                    link = seo_url
+                else:
+                    # Remove leading slash if present to avoid double slash
+                    clean_seo = seo_url.lstrip('/')
+                    link = f"https://unstop.com/{clean_seo}"
                 
                 if link:
                     results.append({
@@ -427,10 +435,22 @@ DIRECT_SOURCES = {
 }
 
 def get_absolute_url(base_url, relative_url):
-    """Convert relative URL to absolute URL"""
+    """Convert relative URL to absolute URL with domain-smart handling"""
     if not relative_url: return ""
+    
+    relative_url = relative_url.strip()
+    
+    # If it's already a full clear URL, return as is
     if relative_url.startswith(('http://', 'https://')):
         return relative_url
+        
+    # Handle cases where Gemini returns 'unstop.com/...' without protocol
+    common_domains = ['unstop.com', 'devfolio.co', 'mlh.io', 'devpost.com', 'hackerearth.com']
+    for domain in common_domains:
+        if relative_url.startswith(domain):
+            return f"https://{relative_url}"
+            
+    # Standard join for truly relative paths
     return urljoin(base_url, relative_url)
 
 def extract_bulk_from_page(url, event_type):
