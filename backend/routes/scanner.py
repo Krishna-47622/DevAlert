@@ -22,14 +22,22 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')
 GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 
 def check_link_validity(url):
-    """Perform a HEAD request to check if a link is still alive"""
+    """Perform a HEAD request to check if a link is still alive with browser-like headers"""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
     try:
-        response = requests.head(url, timeout=5, allow_redirects=True)
-        return response.status_code < 400
+        response = requests.head(url, timeout=5, allow_redirects=True, headers=headers)
+        if response.status_code < 400: return True
+        # If 403 or 405, it might just be bot protection on HEAD, try GET
+        if response.status_code in [403, 404, 405]:
+            response = requests.get(url, timeout=5, stream=True, headers=headers)
+            return response.status_code < 400
+        return False
     except:
         try:
-            # Fallback to GET if HEAD is blocked
-            response = requests.get(url, timeout=5, stream=True)
+            # Fallback to GET if HEAD fails
+            response = requests.get(url, timeout=5, stream=True, headers=headers)
             return response.status_code < 400
         except:
             return False
@@ -498,7 +506,7 @@ def extract_bulk_from_page(url, event_type):
 
 def _perform_scan():
     """Internal scan logic with direct site crawling and fallback search"""
-    print(f">>> [Scanner] _perform_scan loop started", flush=True)
+    print(f">>> [Scanner] _perform_scan loop started. Sources: {list(DIRECT_SOURCES.keys())}", flush=True)
     try:
         new_hacks = 0
         new_interns = 0
@@ -586,8 +594,12 @@ def _perform_scan():
                 results = google_search(q, num_results=5)
                 print(f">>> [Scanner] Search found {len(results)} raw results", flush=True)
                 for res in results:
-                    if not check_link_validity(res['link']): continue
-                    if ModelClass.query.filter_by(title=res['title']).first(): continue
+                    if not check_link_validity(res['link']): 
+                        print(f">>> [Scanner] Filtered (Invalid Link): {res['link']}", flush=True)
+                        continue
+                    if ModelClass.query.filter_by(title=res['title']).first(): 
+                        print(f">>> [Scanner] Filtered (Duplicate): {res['title']}", flush=True)
+                        continue
                     
                     print(f">>> [Scanner] Discovery candidate: {res['title']}", flush=True)
                     event_data = parse_event_data(res, e_type)
