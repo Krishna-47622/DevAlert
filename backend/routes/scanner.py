@@ -20,6 +20,41 @@ scan_results = []
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')
 GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 
+def check_link_validity(url):
+    """Perform a HEAD request to check if a link is still alive"""
+    try:
+        response = requests.head(url, timeout=5, allow_redirects=True)
+        return response.status_code < 400
+    except:
+        try:
+            # Fallback to GET if HEAD is blocked
+            response = requests.get(url, timeout=5, stream=True)
+            return response.status_code < 400
+        except:
+            return False
+
+def get_dynamic_queries(event_type):
+    """Use Gemini to generate fresh search queries"""
+    default_hacks = ["hackathon 2026 India", "coding competition India 2026", "MLH hackathons 2026"]
+    default_interns = ["software engineer intern 2026 India", "tech internship 2026", "summer intern 2026 Bangalore"]
+    
+    try:
+        import google.generativeai as genai
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key: return default_hacks if event_type == 'hackathon' else default_interns
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-pro')
+        
+        current_date = datetime.now().strftime("%B %Y")
+        prompt = f"Generate 3 highly specific Google search queries to find the LATEST and ACTIVE {event_type}s in India for students as of {current_date}. Ensure queries focus on 2026 opportunities. Return only the 3 queries, one per line."
+        
+        response = model.generate_content(prompt)
+        queries = [q.strip() for q in response.text.split('\n') if q.strip()]
+        return queries[:3] if len(queries) >= 3 else (default_hacks if event_type == 'hackathon' else default_interns)
+    except:
+        return default_hacks if event_type == 'hackathon' else default_interns
+
 def create_notifications_for_event(event_type, event_id, title):
     """Create notifications for all users when a new event is found"""
     try:
@@ -354,22 +389,41 @@ def analyze_with_gemini(event_block):
         Analyze this {event_block.get('company', 'event')} opportunity:
         Title: {event_block.get('title')}
         Description: {event_block.get('description')}
+        Link: {event_block.get('registration_link') or event_block.get('application_link')}
         
-        Extract the following if available (return JSON format):
-        - skills_required (comma separated)
-        - mode (Online/Offline/Hybrid)
-        - location (City, Country)
-        - is_legit (true/false assessment)
+        Extract the following and return as STRICT JSON ONLY:
+        {{
+            "skills": "comma separated skills",
+            "mode": "Online/Offline/Hybrid",
+            "location": "City, Country",
+            "deadline": "YYYY-MM-DD (estimate if not clear, must be after {datetime.now().strftime('%Y-%m-%d')})",
+            "is_legit": true/false,
+            "is_old": true/false (true if for 2025 or earlier)
+        }}
         '''
         
         response = model.generate_content(prompt)
-        # In a real app, we would parse the JSON. 
-        # For now, we'll just log it or use it to tag 'ai_verified'
-        print(f"Gemini Analysis: {response.text[:100]}...")
+        import json
         
-        # Simple enrichment example
-        if 'Remote' in response.text or 'Online' in response.text:
-            event_block['mode'] = 'Online'
+        # Extract JSON from markdown if necessary
+        clean_text = response.text.replace('```json', '').replace('```', '').strip()
+        data = json.loads(clean_text)
+        
+        if data.get('is_old'):
+            return None # Discard old events
+            
+        if not data.get('is_legit'):
+            return None # Discard non-legit
+            
+        event_block['skills_required'] = data.get('skills', 'Programming')
+        event_block['mode'] = data.get('mode', 'Hybrid')
+        event_block['location'] = data.get('location', 'India')
+        
+        # Try to parse deadline
+        try:
+            event_block['deadline'] = datetime.strptime(data.get('deadline'), '%Y-%m-%d')
+        except:
+            pass
             
         return event_block
     except Exception as e:
@@ -424,10 +478,15 @@ def _perform_scan():
         skipped_internships = 0
         
         # Search and process hackathons
+        hackathon_queries = get_dynamic_queries('hackathon')
         for query in hackathon_queries:
-            results = google_search(query, num_results=3)
+            results = google_search(query, num_results=5)
             
             for result in results:
+                # Basic link check
+                if not check_link_validity(result['link']):
+                    continue
+                    
                 event_data = parse_event_data(result, 'hackathon')
                 
                 # Check if already exists
@@ -438,6 +497,7 @@ def _perform_scan():
                 if not existing:
                     # Enrich with Gemini
                     event_data = analyze_with_gemini(event_data)
+                    if not event_data: continue # Discard filtered events
                     
                     hackathon = Hackathon(**event_data)
                     db.session.add(hackathon)
@@ -450,10 +510,15 @@ def _perform_scan():
                     skipped_hackathons += 1
         
         # Search and process internships
+        internship_queries = get_dynamic_queries('internship')
         for query in internship_queries:
-            results = google_search(query, num_results=3)
+            results = google_search(query, num_results=5)
             
             for result in results:
+                # Basic link check
+                if not check_link_validity(result['link']):
+                    continue
+
                 event_data = parse_event_data(result, 'internship')
                 
                 # Check if already exists
@@ -464,6 +529,7 @@ def _perform_scan():
                 if not existing:
                     # Enrich with Gemini
                     event_data = analyze_with_gemini(event_data)
+                    if not event_data: continue # Discard filtered events
                     
                     internship = Internship(**event_data)
                     db.session.add(internship)

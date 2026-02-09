@@ -90,6 +90,16 @@ html {
   }
 }
 
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+}
+
 body {
   font-family: var(--font-primary);
   background-color: transparent;
@@ -447,19 +457,20 @@ a:hover {
   .grid-4 {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .grid-3 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
+
   .grid-2,
   .grid-3,
   .grid-4 {
     grid-template-columns: 1fr;
   }
-  
+
   .container {
     padding: 0 var(--spacing-md);
   }
@@ -515,7 +526,7 @@ a:hover {
   .navbar-nav {
     display: none !important;
   }
-  
+
   .navbar-nav.mobile-active {
     display: flex !important;
     position: fixed;
@@ -530,7 +541,7 @@ a:hover {
     z-index: 1000;
     backdrop-filter: blur(10px);
   }
-  
+
   .mobile-menu-toggle {
     display: block !important;
   }

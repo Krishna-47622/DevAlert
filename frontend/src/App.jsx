@@ -18,8 +18,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import AccountSettings from './pages/AccountSettings';
-import ErrorBoundary from './components/ErrorBoundary';
-import './index.css';
+import AboutPage from './pages/AboutPage';
+import Footer from './components/Footer';
 
 function PrivateRoute({ children, adminOnly = false }) {
   const user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -45,6 +45,7 @@ function AnimatedRoutes() {
         <Route path="/forgot-password" element={<PageTransition><ForgotPassword /></PageTransition>} />
         <Route path="/reset-password/:token" element={<PageTransition><ResetPassword /></PageTransition>} />
         <Route path="/verify-email/:token" element={<PageTransition><VerifyEmail /></PageTransition>} />
+        <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
         <Route
           path="/"
           element={
@@ -117,7 +118,10 @@ function App() {
             <Cursor />
             <DeveloperBackground />
             <Navbar />
-            <AnimatedRoutes />
+            <div className="main-content">
+              <AnimatedRoutes />
+            </div>
+            <Footer />
           </div>
         </SmoothScroll>
       </ErrorBoundary>

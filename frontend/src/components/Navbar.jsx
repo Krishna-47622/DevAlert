@@ -66,6 +66,9 @@ export default function Navbar() {
                                 <li>
                                     <Magnetic><NavLink to="/" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)} end>Dashboard</NavLink></Magnetic>
                                 </li>
+                                <li>
+                                    <Magnetic><NavLink to="/about" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>About Us</NavLink></Magnetic>
+                                </li>
                                 {user.role === 'admin' && (
                                     <li>
                                         <Magnetic><NavLink to="/admin" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Admin</NavLink></Magnetic>
