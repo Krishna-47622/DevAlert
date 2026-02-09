@@ -172,31 +172,36 @@ def google_search(query, num_results=10):
         return get_fallback_results(query)
 
 def extract_domain(url):
-    """Extract domain name from URL"""
+    """Extract and format domain name from URL for branding"""
     try:
         match = re.search(r'https?://(?:www\.)?([^/]+)', url)
         if match:
-            domain = match.group(1)
+            domain = match.group(1).lower()
             # Clean up common domains
-            if 'unstop.com' in domain:
-                return 'unstop'
-            elif 'devfolio.co' in domain:
-                return 'devfolio'
-            elif 'linkedin.com' in domain:
-                return 'linkedin'
-            elif 'mlh.io' in domain:
-                return 'mlh'
-            elif 'devpost.com' in domain:
-                return 'devpost'
-            elif 'internshala.com' in domain:
-                return 'internshala'
-            elif 'wellfound.com' in domain:
-                return 'wellfound'
-            else:
-                return domain.split('.')[0]
-        return 'web'
+            mapping = {
+                'unstop.com': 'Unstop',
+                'devfolio.co': 'Devfolio',
+                'linkedin.com': 'LinkedIn',
+                'mlh.io': 'MLH',
+                'devpost.com': 'Devpost',
+                'internshala.com': 'Internshala',
+                'wellfound.com': 'Wellfound',
+                'hackerearth.com': 'HackerEarth',
+                'hackclub.com': 'HackClub',
+                'angelhack.com': 'AngelHack',
+                'google.com': 'Google'
+            }
+            
+            for key, val in mapping.items():
+                if key in domain:
+                    return val
+            
+            # Fallback: Capitalize the first part of the domain
+            parts = domain.split('.')
+            return parts[0].capitalize() if parts else 'Web'
+        return 'Web'
     except:
-        return 'web'
+        return 'Web'
 
 def scrape_unstop(category="hackathons"):
     """Scrape Unstop for current hackathons/internships"""
@@ -306,9 +311,9 @@ def parse_event_data(search_result, event_type):
     source = search_result['source']
     
     location = 'India'
-    mode = 'hybrid'
+    mode = 'Hybrid'
     if 'online' in title.lower() or 'virtual' in title.lower():
-        mode = 'online'
+        mode = 'Online'
     
     if event_type == 'hackathon':
         return {
@@ -558,6 +563,7 @@ def _perform_scan():
                         continue
                     
                     print(f">>> [Scanner] Found new potential candidate: {res['name']}", flush=True)
+                    source_name = extract_domain(direct_url)
                     # Prepare for enrichment/save
                     event_data = {
                         'title': res['name'],
@@ -568,7 +574,7 @@ def _perform_scan():
                         'mode': res['mode'],
                         'registration_link': res['link'] if e_type == 'hackathon' else None,
                         'application_link': res['link'] if e_type == 'internship' else None,
-                        'source': 'direct_scan'
+                        'source': source_name
                     }
                     
                     # High-fidelity enrichment per individual event
@@ -589,7 +595,7 @@ def _perform_scan():
                             prize_pool=enriched.get('prize_pool', 'Not specified'),
                             registration_link=enriched['registration_link'],
                             status='pending',
-                            source='direct_scan'
+                            source=enriched.get('source', 'Web')
                         )
                     else:
                         entry = Internship(
@@ -603,7 +609,7 @@ def _perform_scan():
                             skills_required=enriched.get('skills_required', 'Programming'),
                             application_link=enriched['application_link'],
                             status='pending',
-                            source='direct_scan'
+                            source=enriched.get('source', 'Web')
                         )
                     
                     db.session.add(entry)
@@ -643,7 +649,7 @@ def _perform_scan():
                              prize_pool=enriched.get('prize_pool'),
                              registration_link=enriched.get('registration_link'),
                              status='pending',
-                             source='ai_scan'
+                             source=enriched.get('source', 'Web')
                          )
                     else:
                          entry = Internship(
@@ -657,7 +663,7 @@ def _perform_scan():
                              skills_required=enriched.get('skills_required', 'Programming'),
                              application_link=enriched.get('application_link'),
                              status='pending',
-                             source='ai_scan'
+                             source=enriched.get('source', 'Web')
                          )
                     
                     db.session.add(entry)
