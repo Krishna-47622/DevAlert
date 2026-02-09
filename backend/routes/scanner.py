@@ -9,6 +9,7 @@ from models import db, Hackathon, Internship, User, Notification
 import requests
 import os
 import re
+import time
 
 scanner_bp = Blueprint('scanner', __name__)
 
@@ -644,37 +645,49 @@ def _perform_scan():
         db.session.rollback()
         raise
 
-import time
-
 def ai_scan_and_save(app=None):
     """
     Main scanning function with two-stage processing.
     Designed to be thread-safe for background execution.
     """
+    print(f">>> [Scanner Thread] Worker started at {datetime.now()}", flush=True)
+    
     # Wait a moment for the parent request to complete and return its response
-    time.sleep(1)
-    print(f"[AI Scanner] Starting Advanced Multi-Site Scan at {datetime.now()}")
+    try:
+        print(">>> [Scanner Thread] Sleeping for 2s to allow parent response...", flush=True)
+        time.sleep(2)
+    except Exception as e:
+        print(f">>> [Scanner Thread] Sleep interrupted: {e}", flush=True)
+
+    print(f">>> [Scanner Thread] Starting Advanced Multi-Site Scan...", flush=True)
     
     try:
         if app:
             with app.app_context():
+                print(">>> [Scanner Thread] App context acquired via passed app", flush=True)
                 return _perform_scan()
         else:
             from flask import current_app
             try:
+                # This might fail in a background thread if context not pushed
                 if current_app:
+                    print(">>> [Scanner Thread] App context found in current_app", flush=True)
                     return _perform_scan()
             except:
                 pass
                 
+            print(">>> [Scanner Thread] Creating fresh app context...", flush=True)
             from app import create_app
             temp_app = create_app()
             with temp_app.app_context():
                 return _perform_scan()
     except Exception as e:
-        print(f"❌ Scan failed: {e}")
+        print(f"❌ [Scanner Thread] Scan failed with error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
         return {'error': str(e)}
     finally:
+        print(">>> [Scanner Thread] Cleaning up session...", flush=True)
         try:
             db.session.remove()
         except:

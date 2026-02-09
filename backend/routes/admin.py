@@ -2,6 +2,9 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Hackathon, Internship, User, Notification, Application
 from sqlalchemy import func
+import threading
+import sys
+from .scanner import ai_scan_and_save
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -263,23 +266,24 @@ def get_stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-import threading
-from flask import current_app
-
 @admin_bp.route('/trigger-scan', methods=['POST'])
 @jwt_required()
 def trigger_ai_scan():
     """Manually trigger AI scan (admin only) - Background version to prevent 502"""
+    print(">>> [Admin] trigger_ai_scan called", flush=True)
     try:
         user_id = get_jwt_identity()
+        print(f">>> [Admin] user_id from token: {user_id}", flush=True)
         user = User.query.get(int(user_id))
         
         if not user or user.role != 'admin':
+            print(">>> [Admin] Unauthorized access attempt", flush=True)
             return jsonify({'error': 'Unauthorized'}), 403
             
-        from routes.scanner import ai_scan_and_save
+        print(">>> [Admin] Identity verified, launching background thread...", flush=True)
         
         # Get the real app object to pass to the thread
+        from flask import current_app
         app_obj = current_app._get_current_object()
         
         # CRITICAL: Prepare for thread isolation
@@ -291,13 +295,16 @@ def trigger_ai_scan():
         thread.daemon = True
         thread.start()
         
+        print(">>> [Admin] Background thread started, returning response", flush=True)
         return jsonify({
             'message': 'AI scan triggered successfully in background. Results will appear soon.',
             'status': 'success'
         }), 200
         
     except Exception as e:
-        print(f"❌ Error in admin /trigger-scan: {str(e)}")
+        print(f"❌ Error in admin /trigger-scan: {str(e)}", flush=True)
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/host-requests', methods=['GET'])
