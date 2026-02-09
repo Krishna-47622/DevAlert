@@ -263,31 +263,41 @@ def get_stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+import threading
+from flask import current_app
+
 @admin_bp.route('/trigger-scan', methods=['POST'])
 @jwt_required()
 def trigger_ai_scan():
-    """Manually trigger AI scan (admin only)"""
+    """Manually trigger AI scan (admin only) - Background version to prevent 502"""
     try:
         user_id = get_jwt_identity()
-        print(f"DEBUG: Triggering scan for user_id: {user_id}")
         user = User.query.get(int(user_id))
         
         if not user or user.role != 'admin':
-            print(f"DEBUG: Unauthorized access attempt by user: {user_id}")
             return jsonify({'error': 'Unauthorized'}), 403
             
         from routes.scanner import ai_scan_and_save
-        results = ai_scan_and_save()
         
-        print(f"DEBUG: Scan completed. Results found: {results.get('total_found', 0)}")
+        # Get the real app object to pass to the thread
+        app_obj = current_app._get_current_object()
+        
+        # CRITICAL: Prepare for thread isolation
+        db.session.remove()
+        db.engine.dispose()
+        
+        # Run in background to avoid 502 timeout
+        thread = threading.Thread(target=ai_scan_and_save, args=(app_obj,))
+        thread.daemon = True
+        thread.start()
+        
         return jsonify({
-            'message': 'AI scan triggered successfully',
-            'results': results
+            'message': 'AI scan triggered successfully in background. Results will appear soon.',
+            'status': 'success'
         }), 200
+        
     except Exception as e:
-        print(f"❌ Error in /trigger-scan: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ Error in admin /trigger-scan: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/host-requests', methods=['GET'])
