@@ -333,7 +333,11 @@ def analyze_with_gemini(event_block):
             
         data = json.loads(json_match.group(0))
         
-        if not data.get('is_legit') or not data.get('is_future_event'):
+        is_legit = data.get('is_legit', True)
+        is_future = data.get('is_future_event', True)
+        
+        if not is_legit or not is_future:
+            print(f">>> [Scanner] AI Filtering Event: '{data.get('name')}' (Legit: {is_legit}, Future: {is_future})", flush=True)
             return None
             
         # Update event block with high-fidelity data
@@ -360,24 +364,7 @@ def analyze_with_gemini(event_block):
         print(f"DEBUG: Gemini 1.5 Analysis Error: {e}")
         return event_block
 
-def ai_scan_and_save(app=None):
-    """Main scanning function with two-stage processing"""
-    print(f"[AI Scanner] Starting Advanced Multi-Site Scan at {datetime.now()}")
-    
-    try:
-        from app import create_app
-        if app:
-            with app.app_context():
-                return _perform_scan()
-        elif current_app:
-            return _perform_scan()
-        else:
-            temp_app = create_app()
-            with temp_app.app_context():
-                return _perform_scan()
-    except Exception as e:
-        print(f"❌ Scan failed: {e}")
-        return {'error': str(e)}
+
 
 def get_dynamic_queries(event_type):
     """Use Gemini to generate fresh search queries targeting specific sources requested by user"""
@@ -488,6 +475,7 @@ def extract_bulk_from_page(url, event_type):
 
         data = json.loads(json_match.group(0))
         extracted = data.get('opportunities', [])
+        print(f">>> [Scanner] Gemini extracted {len(extracted)} raw opportunities from {url}", flush=True)
         
         # Post-process links and validate
         valid_results = []
@@ -497,15 +485,20 @@ def extract_bulk_from_page(url, event_type):
             opp['link'] = get_absolute_url(base_domain, opp.get('link'))
             if check_link_validity(opp['link']):
                 valid_results.append(opp)
+            else:
+                print(f">>> [Scanner] Invalid link filtered: {opp['link']}", flush=True)
         
-        print(f"DEBUG: Gemini found {len(valid_results)} direct opportunities from {url}")
+        print(f">>> [Scanner] {len(valid_results)}/{len(extracted)} items passed link validation for {url}", flush=True)
         return valid_results
     except Exception as e:
-        print(f"DEBUG: Direct extraction error for {url}: {e}")
+        print(f"❌ [Scanner] Direct extraction error for {url}: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
         return []
 
 def _perform_scan():
     """Internal scan logic with direct site crawling and fallback search"""
+    print(f">>> [Scanner] _perform_scan loop started", flush=True)
     try:
         new_hacks = 0
         new_interns = 0
@@ -516,12 +509,17 @@ def _perform_scan():
         ]
         
         for e_type, ModelClass in task_configs:
+            print(f">>> [Scanner] Mode: {e_type}", flush=True)
             # 1. DIRECT SCANNING (Higher priority/quality)
             for direct_url in DIRECT_SOURCES.get(e_type, []):
+                print(f">>> [Scanner] Direct Scan URL: {direct_url}", flush=True)
                 bulk_results = extract_bulk_from_page(direct_url, e_type)
                 for res in bulk_results:
-                    if ModelClass.query.filter_by(title=res['name']).first(): continue
+                    if ModelClass.query.filter_by(title=res['name']).first(): 
+                        print(f">>> [Scanner] Skipping duplicate: {res['name']}", flush=True)
+                        continue
                     
+                    print(f">>> [Scanner] Found new potential candidate: {res['name']}", flush=True)
                     # Prepare for enrichment/save
                     event_data = {
                         'title': res['name'],
@@ -537,7 +535,9 @@ def _perform_scan():
                     
                     # High-fidelity enrichment per individual event
                     enriched = analyze_with_gemini(event_data)
-                    if not enriched: continue
+                    if not enriched: 
+                        print(f">>> [Scanner] Enrichment rejected: {res['name']}", flush=True)
+                        continue
                     
                     # Final Field Mapping
                     if e_type == 'hackathon':
@@ -557,6 +557,7 @@ def _perform_scan():
                         db.session.flush()
                         create_notifications_for_event('hackathon', entry.id, entry.title)
                         new_hacks += 1
+                        print(f">>> [Scanner] SAVED Hackathon: {entry.title}", flush=True)
                     else:
                         entry = Internship(
                             title=enriched['title'],
@@ -575,16 +576,20 @@ def _perform_scan():
                         db.session.flush()
                         create_notifications_for_event('internship', entry.id, entry.title)
                         new_interns += 1
+                        print(f">>> [Scanner] SAVED Internship: {entry.title}", flush=True)
 
             # 2. GOOGLE SEARCH FALLBACK (Discovery)
             queries = get_dynamic_queries(e_type)
+            print(f">>> [Scanner] Google Discovery queries for {e_type}: {len(queries)}", flush=True)
             for q in queries:
-                print(f"[AI Scanner] Running discovery query: {q}")
+                print(f">>> [Scanner] Running discovery query: {q}", flush=True)
                 results = google_search(q, num_results=5)
+                print(f">>> [Scanner] Search found {len(results)} raw results", flush=True)
                 for res in results:
                     if not check_link_validity(res['link']): continue
                     if ModelClass.query.filter_by(title=res['title']).first(): continue
                     
+                    print(f">>> [Scanner] Discovery candidate: {res['title']}", flush=True)
                     event_data = parse_event_data(res, e_type)
                     enriched = analyze_with_gemini(event_data)
                     if not enriched: continue
@@ -625,7 +630,9 @@ def _perform_scan():
                     create_notifications_for_event(e_type, entry.id, entry.title)
                     if e_type == 'hackathon': new_hacks += 1
                     else: new_interns += 1
+                    print(f">>> [Scanner] SAVED ({e_type}): {entry.title}", flush=True)
             
+        print(f">>> [Scanner] Committing {new_hacks + new_interns} new entries to database...", flush=True)
         db.session.commit()
         
         result = {
