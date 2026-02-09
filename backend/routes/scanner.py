@@ -51,8 +51,12 @@ def get_dynamic_queries(event_type):
         
         response = model.generate_content(prompt)
         queries = [q.strip() for q in response.text.split('\n') if q.strip()]
+        queries = [re.sub(r'^\d+\.\s*', '', q) for q in queries] # Remove numbering if AI added it
+        
+        print(f"DEBUG: Gemini generated queries for {event_type}: {queries}")
         return queries[:3] if len(queries) >= 3 else (default_hacks if event_type == 'hackathon' else default_interns)
-    except:
+    except Exception as e:
+        print(f"DEBUG: Gemini Query generation error: {e}")
         return default_hacks if event_type == 'hackathon' else default_interns
 
 def create_notifications_for_event(event_type, event_id, title):
@@ -80,9 +84,8 @@ def google_search(query, num_results=10):
     Returns list of search results with title, link, and snippet
     """
     if not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
-        print("⚠️  Google API credentials not configured. Using fallback data.")
+        print("⚠️  Google API credentials not configured. Using fallback documentation data.")
         return get_fallback_results(query)
-    
     
     try:
         url = "https://www.googleapis.com/customsearch/v1"
@@ -132,7 +135,7 @@ def extract_domain(url):
                 return 'devpost'
             elif 'internshala.com' in domain:
                 return 'internshala'
-            elif 'angel.co' in domain or 'wellfound.com' in domain:
+            elif 'wellfound.com' in domain:
                 return 'wellfound'
             else:
                 return domain.split('.')[0]
@@ -141,10 +144,8 @@ def extract_domain(url):
         return 'web'
 
 def scrape_unstop(category="hackathons"):
-    """Scrape Unstop using their public API"""
+    """Scrape Unstop for current hackathons/internships"""
     try:
-        # Use Unstop's public API for reliable results
-        # Endpoint: https://unstop.com/api/public/opportunity/search-result
         url = "https://unstop.com/api/public/opportunity/search-result"
         params = {
             'opportunity': category,
@@ -156,11 +157,9 @@ def scrape_unstop(category="hackathons"):
             'Accept': 'application/json, text/plain, */*',
         }
         
-        print(f"DEBUG: Fetching Unstop API for {category}...")
         response = requests.get(url, params=params, headers=headers, timeout=15)
         
         if response.status_code != 200:
-             print(f"⚠️ Unstop API failed: {response.status_code}")
              return []
              
         data = response.json()
@@ -169,12 +168,8 @@ def scrape_unstop(category="hackathons"):
         if 'data' in data and 'data' in data['data']:
             items = data['data']['data']
             for item in items:
-                # Extract relevant fields
                 title = item.get('title', 'Unknown Event')
                 seo_url = item.get('seo_url', '')
-                logo_url = item.get('logoUrl2', '') # Optional
-                
-                # Construct full link
                 link = f"https://unstop.com/{seo_url}" if seo_url else ""
                 
                 if link:
@@ -185,7 +180,6 @@ def scrape_unstop(category="hackathons"):
                         'source': 'unstop'
                     })
         
-        print(f"DEBUG: Unstop API found {len(results)} items")
         return results
     except Exception as e:
         print(f"⚠️ Unstop {category} API error: {e}")
@@ -217,224 +211,135 @@ def scrape_devpost():
 
 def get_fallback_results(query):
     """Fallback data - Try multiple scrapers, then use hardcoded data"""
-    print(f"🔍 Attempting scraper fallback for: {query}")
+    print(f"🔍 AI Scanner: Using scraper fallback for: {query}")
     
     scraped_data = []
     if 'hackathon' in query.lower():
-        unstop_hacks = scrape_unstop("hackathons")
-        print(f"DEBUG: Unstop found {len(unstop_hacks)} hackathons")
-        scraped_data.extend(unstop_hacks)
-        
-        if not unstop_hacks:
-            devpost_hacks = scrape_devpost()
-            print(f"DEBUG: Devpost found {len(devpost_hacks)} hackathons")
-            scraped_data.extend(devpost_hacks)
+        scraped_data.extend(scrape_unstop("hackathons"))
+        if not scraped_data:
+            scraped_data.extend(scrape_devpost())
     elif 'internship' in query.lower():
-        unstop_interns = scrape_unstop("internships")
-        print(f"DEBUG: Unstop found {len(unstop_interns)} internships")
-        scraped_data.extend(unstop_interns)
+        scraped_data.extend(scrape_unstop("internships"))
     
     if scraped_data:
-        print(f"✅ Found {len(scraped_data)} results total via scraping")
         return scraped_data
     
-    print("⚠️ No results found via scraping, using hardcoded fallback.")
-
-    # Original hardcoded fallback if scraping fails or returns nothing
+    # Final hardcoded fallback if all else fails
     if 'hackathon' in query.lower():
         return [
-            {
-                'title': 'Smart India Hackathon 2026',
-                'link': 'https://www.sih.gov.in/',
-                'snippet': 'National level hackathon for innovative solutions. Prize pool of ₹1 Crore. Register now!',
-                'source': 'sih.gov.in'
-            },
-            {
-                'title': 'ETHIndia 2026 - Ethereum Hackathon',
-                'link': 'https://ethindia.co/',
-                'snippet': 'India\'s largest Ethereum hackathon. Build decentralized applications. Win exciting prizes.',
-                'source': 'devfolio'
-            },
-            {
-                'title': 'Google Solution Challenge 2026',
-                'link': 'https://developers.google.com/community/gdsc-solution-challenge',
-                'snippet': 'Build solutions for UN Sustainable Development Goals using Google technology.',
-                'source': 'google'
-            },
-            {
-                'title': 'Hacktoberfest 2026 - Open Source',
-                'link': 'https://hacktoberfest.com/',
-                'snippet': 'Global celebration of open source. Contribute to projects and win swag.',
-                'source': 'hacktoberfest'
-            }
+            {'title': 'Smart India Hackathon 2026', 'link': 'https://www.sih.gov.in/', 'snippet': 'National level hackathon for innovative solutions.', 'source': 'sih.gov.in'},
+            {'title': 'ETHIndia 2026 - Ethereum Hackathon', 'link': 'https://ethindia.co/', 'snippet': 'India\'s largest Ethereum hackathon.', 'source': 'devfolio'}
         ]
-    else:  # internship
+    else:
         return [
-            {
-                'title': 'Google Software Engineering Intern 2026',
-                'link': 'https://careers.google.com/students/',
-                'snippet': 'Software Engineering Intern positions at Google India. Competitive stipend and learning opportunities.',
-                'source': 'google'
-            },
-            {
-                'title': 'Microsoft SWE Internship Program 2026',
-                'link': 'https://careers.microsoft.com/students',
-                'snippet': 'Join Microsoft IDC for summer internship. Work on cutting-edge technology and cloud systems.',
-                'source': 'microsoft'
-            },
-            {
-                'title': 'Amazon SDE Intern - 2026 Grad',
-                'link': 'https://www.amazon.jobs/en/teams/internships-for-students',
-                'snippet': 'Software Development Engineer Intern role. 6-month internship with full-time conversion opportunity.',
-                'source': 'amazon'
-            },
-            {
-                'title': 'NVIDIA Deep Learning Intern',
-                'link': 'https://www.nvidia.com/en-us/about-nvidia/careers/university/',
-                'snippet': 'Work on next-gen AI and GPU computing at NVIDIA Bangalore.',
-                'source': 'nvidia'
-            }
+            {'title': 'Google SWE Intern 2026', 'link': 'https://careers.google.com/students/', 'snippet': 'Software Engineering Intern positions at Google India.', 'source': 'google'}
         ]
 
 def parse_event_data(search_result, event_type):
-    """
-    Parse search result into event data structure
-    Uses simple heuristics to extract information
-    """
+    """Parse search result into event data structure"""
     title = search_result['title']
     snippet = search_result['snippet']
     link = search_result['link']
     source = search_result['source']
     
-    # Extract location (simple heuristic)
     location = 'India'
-    cities = ['Hyderabad', 'Bangalore', 'Mumbai', 'Delhi', 'Pune', 'Chennai', 'Kolkata']
-    for city in cities:
-        if city.lower() in title.lower() or city.lower() in snippet.lower():
-            location = city
-            break
-    
-    # Determine mode
     mode = 'hybrid'
     if 'online' in title.lower() or 'virtual' in title.lower():
         mode = 'online'
-    elif 'offline' in title.lower() or 'in-person' in title.lower():
-        mode = 'in-person'
     
     if event_type == 'hackathon':
-        # Extract prize pool if mentioned
-        prize_match = re.search(r'₹[\d,]+|Rs\.?\s*[\d,]+|\$[\d,]+', snippet)
-        prize_pool = prize_match.group(0) if prize_match else None
-        
         return {
-            'title': title[:200],  # Limit length
+            'title': title[:200],
             'description': snippet[:500],
             'organizer': source.capitalize(),
             'location': location,
             'mode': mode,
             'deadline': datetime.now() + timedelta(days=30),
             'start_date': datetime.now() + timedelta(days=35),
-            'prize_pool': prize_pool,
             'registration_link': link,
             'status': 'pending',
             'source': source
         }
-    else:  # internship
-        # Extract duration
-        duration = '3 months'
-        if 'summer' in title.lower() or 'summer' in snippet.lower():
-            duration = '3 months (Summer)'
-        elif '6 month' in snippet.lower():
-            duration = '6 months'
-        
-        # Extract stipend if mentioned
-        stipend_match = re.search(r'₹[\d,]+/month|Rs\.?\s*[\d,]+\s*per\s*month', snippet)
-        stipend = stipend_match.group(0) if stipend_match else None
-        
+    else:
         return {
             'title': title[:200],
             'company': source.capitalize(),
             'description': snippet[:500],
             'location': location,
             'mode': mode,
-            'duration': duration,
-            'stipend': stipend,
+            'duration': '3 months',
             'deadline': datetime.now() + timedelta(days=20),
-            'skills_required': 'Programming, Problem Solving',
+            'skills_required': 'Programming',
             'application_link': link,
             'status': 'pending',
             'source': source
         }
 
 def analyze_with_gemini(event_block):
-    """
-    Use Gemini AI to analyze and enrich event data
-    Lazy import to avoid startup conflicts
-    """
+    """Use Gemini AI to analyze and enrich event data"""
     try:
         import google.generativeai as genai
+        import json
         GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
         
         if not GEMINI_API_KEY:
+            print("DEBUG: GEMINI_API_KEY not found for enrichment")
             return event_block
             
         genai.configure(api_key=GEMINI_API_KEY)
         model = genai.GenerativeModel('gemini-pro')
-    except Exception as e:
-        print(f"Gemini init error: {e}")
-        return event_block
-
-    try:
-        prompt = f'''
-        Analyze this {event_block.get('company', 'event')} opportunity:
+        
+        prompt = f"""
+        Analyze this opportunity:
         Title: {event_block.get('title')}
         Description: {event_block.get('description')}
         Link: {event_block.get('registration_link') or event_block.get('application_link')}
         
-        Extract the following and return as STRICT JSON ONLY:
+        Extract the following and return ONLY STRICT JSON:
         {{
             "skills": "comma separated skills",
             "mode": "Online/Offline/Hybrid",
-            "location": "City, Country",
-            "deadline": "YYYY-MM-DD (estimate if not clear, must be after {datetime.now().strftime('%Y-%m-%d')})",
-            "is_legit": true/false,
-            "is_old": true/false (true if for 2025 or earlier)
+            "location": "City, State, India",
+            "deadline": "YYYY-MM-DD (must be after {datetime.now().strftime('%Y-%m-%d')})",
+            "is_legit": true/false (false if it looks like a dead page or scam),
+            "is_old": true/false (true if the event is for 2025, 2024 or earlier)
         }}
-        '''
+        """
         
         response = model.generate_content(prompt)
-        import json
+        text = response.text
         
-        # Extract JSON from markdown if necessary
-        clean_text = response.text.replace('```json', '').replace('```', '').strip()
-        data = json.loads(clean_text)
-        
-        if data.get('is_old'):
-            return None # Discard old events
+        # Robust JSON extraction
+        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        if not json_match:
+            print(f"DEBUG: Gemini did not return JSON for {event_block.get('title')}")
+            return event_block
             
-        if not data.get('is_legit'):
-            return None # Discard non-legit
+        data = json.loads(json_match.group(0))
+        
+        if data.get('is_old') or not data.get('is_legit'):
+            print(f"DEBUG: Gemini filtered out {event_block.get('title')} (Old: {data.get('is_old')}, Legit: {data.get('is_legit')})")
+            return None
             
         event_block['skills_required'] = data.get('skills', 'Programming')
         event_block['mode'] = data.get('mode', 'Hybrid')
         event_block['location'] = data.get('location', 'India')
         
-        # Try to parse deadline
-        try:
-            event_block['deadline'] = datetime.strptime(data.get('deadline'), '%Y-%m-%d')
-        except:
-            pass
-            
+        deadline_str = data.get('deadline')
+        if deadline_str:
+            try:
+                event_block['deadline'] = datetime.strptime(deadline_str, '%Y-%m-%d')
+            except:
+                pass
+                
         return event_block
     except Exception as e:
-        print(f"Gemini Error: {e}")
+        print(f"DEBUG: Gemini analysis error: {e}")
         return event_block
 
 def ai_scan_and_save(app=None):
-    """
-    Main scanning function - uses Google Custom Search to find real events
-    """
-    print(f"[AI Scanner] Starting scan at {datetime.now()}")
+    """Main scanning function"""
+    print(f"[AI Scanner] Starting scan process at {datetime.now()}")
     
     try:
         from app import create_app
@@ -444,171 +349,98 @@ def ai_scan_and_save(app=None):
         elif current_app:
             return _perform_scan()
         else:
-            # Last resort - create a temporary app context
             temp_app = create_app()
             with temp_app.app_context():
                 return _perform_scan()
-            
     except Exception as e:
-        print(f"❌ Error during scan: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ Scan failed: {e}")
         return {'error': str(e)}
 
 def _perform_scan():
-    """Internal scan function that runs within app context"""
+    """Internal scan logic"""
     try:
-        # Search queries for hackathons
-        hackathon_queries = [
-            "hackathon 2026 India registration open",
-            "coding competition 2026 prizes",
-            "student hackathon India 2026"
-        ]
-        
-        # Search queries for internships
-        internship_queries = [
-            "tech internship 2026 India apply",
-            "software engineering intern 2026",
-            "summer internship 2026 computer science"
-        ]
-        
         new_hackathons = 0
-        skipped_hackathons = 0
         new_internships = 0
-        skipped_internships = 0
         
-        # Search and process hackathons
-        hackathon_queries = get_dynamic_queries('hackathon')
-        for query in hackathon_queries:
-            results = google_search(query, num_results=5)
-            
-            for result in results:
-                # Basic link check
-                if not check_link_validity(result['link']):
-                    continue
-                    
-                event_data = parse_event_data(result, 'hackathon')
+        # 1. Process Hackathons
+        h_queries = get_dynamic_queries('hackathon')
+        for q in h_queries:
+            results = google_search(q, num_results=5)
+            for res in results:
+                if not check_link_validity(res['link']): continue
                 
-                # Check if already exists
-                existing = Hackathon.query.filter_by(
-                    title=event_data['title']
-                ).first()
+                event_data = parse_event_data(res, 'hackathon')
+                if Hackathon.query.filter_by(title=res['title']).first(): continue
                 
-                if not existing:
-                    # Enrich with Gemini
-                    event_data = analyze_with_gemini(event_data)
-                    if not event_data: continue # Discard filtered events
-                    
-                    hackathon = Hackathon(**event_data)
-                    db.session.add(hackathon)
-                    db.session.flush()
-                    
-                    # Create notifications
-                    create_notifications_for_event('hackathon', hackathon.id, hackathon.title)
-                    new_hackathons += 1
-                else:
-                    skipped_hackathons += 1
+                enriched = analyze_with_gemini(event_data)
+                if not enriched: continue
+                
+                hackathon = Hackathon(**enriched)
+                db.session.add(hackathon)
+                db.session.flush()
+                create_notifications_for_event('hackathon', hackathon.id, hackathon.title)
+                new_hackathons += 1
         
-        # Search and process internships
-        internship_queries = get_dynamic_queries('internship')
-        for query in internship_queries:
-            results = google_search(query, num_results=5)
-            
-            for result in results:
-                # Basic link check
-                if not check_link_validity(result['link']):
-                    continue
+        # 2. Process Internships
+        i_queries = get_dynamic_queries('internship')
+        for q in i_queries:
+            results = google_search(q, num_results=5)
+            for res in results:
+                if not check_link_validity(res['link']): continue
+                
+                event_data = parse_event_data(res, 'internship')
+                if Internship.query.filter_by(title=res['title']).first(): continue
+                
+                enriched = analyze_with_gemini(event_data)
+                if not enriched: continue
+                
+                internship = Internship(**enriched)
+                db.session.add(internship)
+                db.session.flush()
+                create_notifications_for_event('internship', internship.id, internship.title)
+                new_internships += 1
 
-                event_data = parse_event_data(result, 'internship')
-                
-                # Check if already exists
-                existing = Internship.query.filter_by(
-                    title=event_data['title']
-                ).first()
-                
-                if not existing:
-                    # Enrich with Gemini
-                    event_data = analyze_with_gemini(event_data)
-                    if not event_data: continue # Discard filtered events
-                    
-                    internship = Internship(**event_data)
-                    db.session.add(internship)
-                    db.session.flush()
-                    
-                    # Create notifications
-                    create_notifications_for_event('internship', internship.id, internship.title)
-                    new_internships += 1
-                else:
-                    skipped_internships += 1
-        
         db.session.commit()
-        
         result = {
             'timestamp': datetime.now().isoformat(),
             'new_hackathons': new_hackathons,
             'new_internships': new_internships,
-            'total_found': new_hackathons + new_internships,
-            'api_configured': bool(GOOGLE_API_KEY and GOOGLE_CSE_ID)
+            'total_found': new_hackathons + new_internships
         }
         
-        # Store in scan results
         global scan_results
         scan_results.append(result)
-        scan_results = scan_results[-20:]
-        
-        print(f"✅ Scan complete: {new_hackathons} new hackathons, {new_internships} new internships. (Skipped {skipped_hackathons + skipped_internships} existing)")
+        scan_results = scan_results[-10:]
+        print(f"✅ Scan finished: {new_hackathons} Hacks, {new_internships} Internships.")
         return result
         
     except Exception as e:
-        print(f"❌ Error during scan: {str(e)}")
+        print(f"❌ Database error in scan: {e}")
         db.session.rollback()
         raise
 
 @scanner_bp.route('/scan', methods=['POST'])
 def trigger_scan():
-    """Manually trigger a scan"""
-    result = ai_scan_and_save()
-    return jsonify({
-        "message": "Scan completed",
-        "result": result
-    })
+    return jsonify({"message": "Scan started", "result": ai_scan_and_save()})
 
 @scanner_bp.route('/results', methods=['GET'])
 def get_scan_results():
-    """Get recent scan results"""
-    return jsonify({
-        "results": scan_results,
-        "total": len(scan_results)
-    })
+    return jsonify({"results": scan_results})
 
 @scanner_bp.route('/schedule', methods=['GET'])
 def get_schedule_status():
-    """Get scheduler status"""
     jobs = scheduler.get_jobs()
     return jsonify({
-        "scheduler_running": scheduler.running,
-        "api_configured": bool(GOOGLE_API_KEY and GOOGLE_CSE_ID),
-        "jobs": [{
-            "id": job.id,
-            "next_run": job.next_run_time.isoformat() if job.next_run_time else None
-        } for job in jobs]
+        "running": scheduler.running,
+        "jobs": [{"id": j.id, "next": j.next_run_time.isoformat() if j.next_run_time else None} for j in jobs]
     })
 
 def start_scheduler(app):
     """Start the background scheduler"""
     if not scheduler.running:
-        # Schedule scan every 30 minutes
-        scheduler.add_job(
-            func=ai_scan_and_save,
-            trigger="interval",
-            minutes=30,
-            id='ai_scanner',
-            name='AI Web Scanner',
-            replace_existing=True,
-            args=[app] # Pass app instance
-        )
+        scheduler.add_job(func=ai_scan_and_save, trigger="interval", minutes=60, id='ai_scanner', args=[app])
         scheduler.start()
-        print("✅ AI Scanner scheduler started - running every 30 minutes")
+        print("✅ Scheduler running every 60 minutes")
 
 def stop_scheduler():
     """Stop the scheduler"""
