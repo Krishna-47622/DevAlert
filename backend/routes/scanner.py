@@ -10,6 +10,7 @@ import requests
 import os
 import re
 import time
+import threading
 
 scanner_bp = Blueprint('scanner', __name__)
 
@@ -309,8 +310,25 @@ def analyze_with_gemini(event_block):
             return event_block
             
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
         
+        # Diagnostic: Check library version
+        try:
+            sdk_version = getattr(genai, "__version__", "unknown")
+            print(f">>> [Scanner] genai SDK version: {sdk_version}", flush=True)
+        except:
+            pass
+            
+        # Robust Model Selection
+        model_name = 'gemini-1.5-flash'
+        try:
+            model = genai.GenerativeModel(model_name)
+        except Exception as e:
+            print(f">>> [Scanner] Model {model_name} setup fail: {e}. Trying fallback.", flush=True)
+            try:
+                model = genai.GenerativeModel(f'models/{model_name}')
+            except:
+                model = genai.GenerativeModel('gemini-pro')
+            
         url = event_block.get('registration_link') or event_block.get('application_link')
         page_text = ""
         if url:
@@ -381,8 +399,6 @@ def analyze_with_gemini(event_block):
         print(f"DEBUG: Gemini 1.5 Analysis Error: {e}")
         return event_block
 
-
-
 def get_dynamic_queries(event_type):
     """Use Gemini to generate fresh search queries targeting specific sources requested by user"""
     sources = {
@@ -399,7 +415,16 @@ def get_dynamic_queries(event_type):
         if not api_key: return default_hacks if event_type == 'hackathon' else default_interns
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Robust Model Selection
+        model_name = 'gemini-1.5-flash'
+        try:
+            model = genai.GenerativeModel(model_name)
+        except:
+            try:
+                model = genai.GenerativeModel(f'models/{model_name}')
+            except:
+                model = genai.GenerativeModel('gemini-pro')
         
         current_date = datetime.now().strftime("%B %Y")
         prompt = f"""
@@ -416,24 +441,6 @@ def get_dynamic_queries(event_type):
     except Exception as e:
         print(f"DEBUG: Dynamic query error: {e}")
         return default_hacks if event_type == 'hackathon' else default_interns
-
-from urllib.parse import urljoin, urlparse
-
-DIRECT_SOURCES = {
-    'hackathon': [
-        'https://devfolio.co/hackathons',
-        'https://mlh.io/seasons/2026/events',
-        'https://devpost.com/hackathons',
-        'https://hackathons.hackclub.com/',
-        'https://www.hackerearth.com/challenges/hackathon/'
-    ],
-    'internship': [
-        'https://internshala.com/internships',
-        'https://unstop.com/internships',
-        'https://internship.aicte-india.org/module_admin/index.php',
-        'https://careers.google.com/students/'
-    ]
-}
 
 def get_absolute_url(base_url, relative_url):
     """Convert relative URL to absolute URL with domain-smart handling"""
@@ -454,6 +461,24 @@ def get_absolute_url(base_url, relative_url):
     # Standard join for truly relative paths
     return urljoin(base_url, relative_url)
 
+from urllib.parse import urljoin, urlparse
+
+DIRECT_SOURCES = {
+    'hackathon': [
+        'https://devfolio.co/hackathons',
+        'https://mlh.io/seasons/2026/events',
+        'https://devpost.com/hackathons',
+        'https://hackathons.hackclub.com/',
+        'https://www.hackerearth.com/challenges/hackathon/'
+    ],
+    'internship': [
+        'https://internshala.com/internships',
+        'https://unstop.com/internships',
+        'https://internship.aicte-india.org/module_admin/index.php',
+        'https://careers.google.com/students/'
+    ]
+}
+
 def extract_bulk_from_page(url, event_type):
     """Fetch page text and use Gemini for bulk opportunity extraction"""
     print(f"[AI Scanner] Directly scanning source: {url}")
@@ -469,7 +494,17 @@ def extract_bulk_from_page(url, event_type):
         if not api_key: return []
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Robust Model Selection
+        model_name = 'gemini-1.5-flash'
+        try:
+            model = genai.GenerativeModel(model_name)
+        except Exception as e:
+            print(f">>> [Scanner] Primary model setup failed for extraction: {e}. Trying absolute.", flush=True)
+            try:
+                model = genai.GenerativeModel(f'models/{model_name}')
+            except:
+                model = genai.GenerativeModel('gemini-pro')
 
         prompt = f"""
         I am providing the text content from a web page: {url}
