@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import './AboutPage.css';
 
 const teamMembers = [
-    { name: "Team Lead", role: "Full Stack Developer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Aiden&backgroundColor=transparent" },
+    { name: "Team Lead", role: "Full Stack Developer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Marcus&backgroundColor=transparent" },
     { name: "Team Member 1", role: "Frontend Specialist", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Aneka&backgroundColor=transparent" },
     { name: "Team Member 2", role: "UI/UX Designer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Cali&backgroundColor=transparent" },
     { name: "Team Member 3", role: "Backend Developer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Dora&backgroundColor=transparent" },
