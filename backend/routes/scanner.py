@@ -33,31 +33,36 @@ def check_link_validity(url):
         except:
             return False
 
-def get_dynamic_queries(event_type):
-    """Use Gemini to generate fresh search queries"""
-    default_hacks = ["hackathon 2026 India", "coding competition India 2026", "MLH hackathons 2026"]
-    default_interns = ["software engineer intern 2026 India", "tech internship 2026", "summer intern 2026 Bangalore"]
-    
+def fetch_page_text(url):
+    """Fetch and clean text content from a URL for Gemini analysis"""
     try:
-        import google.generativeai as genai
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key: return default_hacks if event_type == 'hackathon' else default_interns
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
         
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(response.text, 'html.parser')
         
-        current_date = datetime.now().strftime("%B %Y")
-        prompt = f"Generate 3 highly specific Google search queries to find the LATEST and ACTIVE {event_type}s in India for students as of {current_date}. Ensure queries focus on 2026 opportunities. Return only the 3 queries, one per line."
+        # Remove script and style elements
+        for script in soup(["script", "style", "nav", "footer", "header"]):
+            script.extract()
+            
+        # Get text
+        text = soup.get_text()
         
-        response = model.generate_content(prompt)
-        queries = [q.strip() for q in response.text.split('\n') if q.strip()]
-        queries = [re.sub(r'^\d+\.\s*', '', q) for q in queries] # Remove numbering if AI added it
+        # Break into lines and remove leading and trailing whitespace
+        lines = (line.strip() for line in text.splitlines())
+        # Break multi-headlines into a line each
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        # Drop blank lines
+        text = '\n'.join(chunk for chunk in chunks if chunk)
         
-        print(f"DEBUG: Gemini generated queries for {event_type}: {queries}")
-        return queries[:3] if len(queries) >= 3 else (default_hacks if event_type == 'hackathon' else default_interns)
+        return text[:5000] # Limit context size
     except Exception as e:
-        print(f"DEBUG: Gemini Query generation error: {e}")
-        return default_hacks if event_type == 'hackathon' else default_interns
+        print(f"DEBUG: Failed to fetch text from {url}: {e}")
+        return ""
 
 def create_notifications_for_event(event_type, event_id, title):
     """Create notifications for all users when a new event is found"""
@@ -276,70 +281,87 @@ def parse_event_data(search_result, event_type):
         }
 
 def analyze_with_gemini(event_block):
-    """Use Gemini AI to analyze and enrich event data"""
+    """Use gemini-1.5-flash to analyze and extract detailed structured data"""
     try:
         import google.generativeai as genai
         import json
         GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
         
         if not GEMINI_API_KEY:
-            print("DEBUG: GEMINI_API_KEY not found for enrichment")
             return event_block
             
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        url = event_block.get('registration_link') or event_block.get('application_link')
+        page_text = ""
+        if url:
+             page_text = fetch_page_text(url)
+             
+        # Combine snippet and page text
+        context = f"Title: {event_block.get('title')}\nSnippet: {event_block.get('description')}\nPage Text: {page_text[:3000]}"
         
         prompt = f"""
-        Analyze this opportunity:
-        Title: {event_block.get('title')}
-        Description: {event_block.get('description')}
-        Link: {event_block.get('registration_link') or event_block.get('application_link')}
+        I am providing information about a potential student opportunity. 
+        Analyze the text below and extract details into a STRICT JSON format.
         
-        Extract the following and return ONLY STRICT JSON:
+        STRICT JSON SCHEMA:
         {{
-            "skills": "comma separated skills",
+            "name": "Full Name of Opportunity",
+            "dates": "Start and End dates as string",
+            "location": "City, Country or 'Online'",
+            "prize_pool": "Amount or 'Not specified'",
+            "deadline": "YYYY-MM-DD",
             "mode": "Online/Offline/Hybrid",
-            "location": "City, State, India",
-            "deadline": "YYYY-MM-DD (must be after {datetime.now().strftime('%Y-%m-%d')})",
-            "is_legit": true/false (false if it looks like a dead page or scam),
-            "is_old": true/false (true if the event is for 2025, 2024 or earlier)
+            "is_internship_inside_hackathon": true/false,
+            "is_legit": true/false (false if old/dead/scam),
+            "is_future_event": true/false (true if after {datetime.now().strftime('%Y-%m-%d')}),
+            "skills": "comma separated key skills"
         }}
+        
+        TEXT TO ANALYZE:
+        {context}
         """
         
         response = model.generate_content(prompt)
         text = response.text
         
-        # Robust JSON extraction
         json_match = re.search(r'\{.*\}', text, re.DOTALL)
         if not json_match:
-            print(f"DEBUG: Gemini did not return JSON for {event_block.get('title')}")
             return event_block
             
         data = json.loads(json_match.group(0))
         
-        if data.get('is_old') or not data.get('is_legit'):
-            print(f"DEBUG: Gemini filtered out {event_block.get('title')} (Old: {data.get('is_old')}, Legit: {data.get('is_legit')})")
+        if not data.get('is_legit') or not data.get('is_future_event'):
             return None
             
-        event_block['skills_required'] = data.get('skills', 'Programming')
-        event_block['mode'] = data.get('mode', 'Hybrid')
-        event_block['location'] = data.get('location', 'India')
+        # Update event block with high-fidelity data
+        event_block['title'] = data.get('name', event_block['title'])
+        event_block['location'] = data.get('location', event_block['location'])
+        event_block['mode'] = data.get('mode', event_block['mode'])
+        event_block['skills_required'] = data.get('skills', event_block.get('skills_required', 'Programming'))
         
-        deadline_str = data.get('deadline')
-        if deadline_str:
-            try:
-                event_block['deadline'] = datetime.strptime(deadline_str, '%Y-%m-%d')
-            except:
-                pass
-                
+        if 'prize_pool' in data and data.get('prize_pool') != 'Not specified':
+            event_block['prize_pool'] = data.get('prize_pool')
+            
+        try:
+            event_block['deadline'] = datetime.strptime(data.get('deadline'), '%Y-%m-%d')
+        except:
+            pass
+            
+        # HANDLE INTERNSHIP DETECTION WITHIN HACKATHON
+        if data.get('is_internship_inside_hackathon') and event_block.get('type') == 'hackathon':
+             event_block['also_internship'] = True
+             print(f"DEBUG: Found internship opportunity inside hackathon: {event_block['title']}")
+            
         return event_block
     except Exception as e:
-        print(f"DEBUG: Gemini analysis error: {e}")
+        print(f"DEBUG: Gemini 1.5 Analysis Error: {e}")
         return event_block
 
 def ai_scan_and_save(app=None):
-    """Main scanning function"""
-    print(f"[AI Scanner] Starting scan process at {datetime.now()}")
+    """Main scanning function with two-stage processing"""
+    print(f"[AI Scanner] Starting Advanced Multi-Site Scan at {datetime.now()}")
     
     try:
         from app import create_app
@@ -356,62 +378,142 @@ def ai_scan_and_save(app=None):
         print(f"❌ Scan failed: {e}")
         return {'error': str(e)}
 
-def _perform_scan():
-    """Internal scan logic"""
+def get_dynamic_queries(event_type):
+    """Use Gemini to generate fresh search queries targeting specific sources requested by user"""
+    sources = {
+        'hackathon': "Devpost, MLH, Devfolio, HackerEarth, Hack Club, AngelHack",
+        'internship': "LinkedIn, Internshala, Google Careers (STEP/SWE), Levels.fyi, AICTE Internship Portal, Unstop"
+    }
+    
+    default_hacks = ["site:devfolio.co hackathon 2026", "site:mlh.io 2026", "site:devpost.com India", "site:hackerearth.com hackathons"]
+    default_interns = ["site:internshala.com software intern 2026", "site:unstop.com internships", "site:careers.google.com student roles", "site:internship.aicte-india.org"]
+    
     try:
-        new_hackathons = 0
-        new_internships = 0
+        import google.generativeai as genai
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key: return default_hacks if event_type == 'hackathon' else default_interns
         
-        # 1. Process Hackathons
-        h_queries = get_dynamic_queries('hackathon')
-        for q in h_queries:
-            results = google_search(q, num_results=5)
-            for res in results:
-                if not check_link_validity(res['link']): continue
-                
-                event_data = parse_event_data(res, 'hackathon')
-                if Hackathon.query.filter_by(title=res['title']).first(): continue
-                
-                enriched = analyze_with_gemini(event_data)
-                if not enriched: continue
-                
-                hackathon = Hackathon(**enriched)
-                db.session.add(hackathon)
-                db.session.flush()
-                create_notifications_for_event('hackathon', hackathon.id, hackathon.title)
-                new_hackathons += 1
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # 2. Process Internships
-        i_queries = get_dynamic_queries('internship')
-        for q in i_queries:
-            results = google_search(q, num_results=5)
-            for res in results:
-                if not check_link_validity(res['link']): continue
-                
-                event_data = parse_event_data(res, 'internship')
-                if Internship.query.filter_by(title=res['title']).first(): continue
-                
-                enriched = analyze_with_gemini(event_data)
-                if not enriched: continue
-                
-                internship = Internship(**enriched)
-                db.session.add(internship)
-                db.session.flush()
-                create_notifications_for_event('internship', internship.id, internship.title)
-                new_internships += 1
+        current_date = datetime.now().strftime("%B %Y")
+        prompt = f"""
+        Generate 8 highly targeted Google search queries (using site: operator where possible) to find the LATEST and ACTIVE {event_type}s for 2026.
+        Target these platforms specifically: {sources.get(event_type)}.
+        Focus on India-based or Global-remote opportunities for students.
+        Exclude any results from 2025 or earlier.
+        Return ONLY the queries, one per line.
+        """
+        
+        response = model.generate_content(prompt)
+        queries = [q.strip() for q in response.text.split('\n') if q.strip() and ('site:' in q or event_type in q.lower())]
+        return queries[:8] if len(queries) >= 3 else (default_hacks if event_type == 'hackathon' else default_interns)
+    except Exception as e:
+        print(f"DEBUG: Dynamic query error: {e}")
+        return default_hacks if event_type == 'hackathon' else default_interns
 
+def _perform_scan():
+    """Internal scan logic with source diversity and model mapping"""
+    try:
+        new_hacks = 0
+        new_interns = 0
+        
+        # 1. Targets
+        task_types = [
+            ('hackathon', Hackathon),
+            ('internship', Internship)
+        ]
+        
+        for e_type, ModelClass in task_types:
+            queries = get_dynamic_queries(e_type)
+            for q in queries:
+                print(f"[AI Scanner] Running query: {q}")
+                results = google_search(q, num_results=5)
+                
+                for res in results:
+                    # Basic validity and duplicate check
+                    if not check_link_validity(res['link']): continue
+                    if ModelClass.query.filter_by(title=res['title']).first(): continue
+                    
+                    event_data = parse_event_data(res, e_type)
+                    event_data['type'] = e_type 
+                    
+                    # Stage 2: Gemini 1.5 Flash Enrichment (High fidelity)
+                    enriched = analyze_with_gemini(event_data)
+                    if not enriched: continue
+                    
+                    # Model specific field mapping to avoid DB errors
+                    if e_type == 'hackathon':
+                         # Hackathon fields: title, description, organizer, location, mode, deadline, start_date, prize_pool, registration_link, status, source
+                         final_data = {
+                             'title': enriched.get('title'),
+                             'description': enriched.get('description'),
+                             'organizer': enriched.get('organizer'),
+                             'location': enriched.get('location'),
+                             'mode': enriched.get('mode'),
+                             'deadline': enriched.get('deadline'),
+                             'prize_pool': enriched.get('prize_pool'),
+                             'registration_link': enriched.get('registration_link'),
+                             'status': 'pending',
+                             'source': 'ai_scan'
+                         }
+                         entry = Hackathon(**final_data)
+                         db.session.add(entry)
+                         db.session.flush()
+                         create_notifications_for_event('hackathon', entry.id, entry.title)
+                         new_hacks += 1
+                         
+                         # If it's a combo, also save as internship
+                         if enriched.get('also_internship'):
+                              intern_data = {
+                                  'title': f"[Internship/Hiring] {enriched['title']}",
+                                  'company': enriched.get('organizer', 'Hackathon Partner'),
+                                  'description': f"Note: Found via Hackathon. This event includes hiring/internship opportunities. Description: {enriched.get('description')}",
+                                  'location': enriched.get('location'),
+                                  'mode': enriched.get('mode'),
+                                  'duration': 'Not specified',
+                                  'deadline': enriched.get('deadline'),
+                                  'application_link': enriched.get('registration_link'),
+                                  'status': 'pending',
+                                  'source': 'ai_scan'
+                              }
+                              intern_entry = Internship(**intern_data)
+                              db.session.add(intern_entry)
+                              new_interns += 1
+                    else:
+                         # Internship fields: title, company, description, location, mode, duration, stipend, deadline, skills_required, application_link, status, source
+                         final_data = {
+                             'title': enriched.get('title'),
+                             'company': enriched.get('company'),
+                             'description': enriched.get('description'),
+                             'location': enriched.get('location'),
+                             'mode': enriched.get('mode'),
+                             'duration': enriched.get('duration', '3 months'),
+                             'stipend': enriched.get('stipend', 'Not specified'),
+                             'deadline': enriched.get('deadline'),
+                             'skills_required': enriched.get('skills_required', 'Programming'),
+                             'application_link': enriched.get('application_link'),
+                             'status': 'pending',
+                             'source': 'ai_scan'
+                         }
+                         entry = Internship(**final_data)
+                         db.session.add(entry)
+                         db.session.flush()
+                         create_notifications_for_event('internship', entry.id, entry.title)
+                         new_interns += 1
+            
         db.session.commit()
+        
         result = {
             'timestamp': datetime.now().isoformat(),
-            'new_hackathons': new_hackathons,
-            'new_internships': new_internships,
-            'total_found': new_hackathons + new_internships
+            'new_hackathons': new_hacks,
+            'new_internships': new_interns,
+            'status': 'success'
         }
         
         global scan_results
         scan_results.append(result)
-        scan_results = scan_results[-10:]
-        print(f"✅ Scan finished: {new_hackathons} Hacks, {new_internships} Internships.")
+        print(f"✅ Advanced Scan complete: Found {new_hacks} Hacks, {new_interns} Internships.")
         return result
         
     except Exception as e:
@@ -421,14 +523,17 @@ def _perform_scan():
 
 @scanner_bp.route('/scan', methods=['POST'])
 def trigger_scan():
-    return jsonify({"message": "Scan started", "result": ai_scan_and_save()})
+    """Manual scan trigger"""
+    return jsonify(ai_scan_and_save())
 
 @scanner_bp.route('/results', methods=['GET'])
 def get_scan_results():
-    return jsonify({"results": scan_results})
+    """Get last 10 results"""
+    return jsonify({"results": scan_results[-10:]})
 
 @scanner_bp.route('/schedule', methods=['GET'])
 def get_schedule_status():
+    """Scheduler info"""
     jobs = scheduler.get_jobs()
     return jsonify({
         "running": scheduler.running,
@@ -436,14 +541,13 @@ def get_schedule_status():
     })
 
 def start_scheduler(app):
-    """Start the background scheduler"""
+    """Start scan every 60m"""
     if not scheduler.running:
-        scheduler.add_job(func=ai_scan_and_save, trigger="interval", minutes=60, id='ai_scanner', args=[app])
+        scheduler.add_job(func=ai_scan_and_save, trigger="interval", minutes=60, id='ai_scanner_v2', args=[app])
         scheduler.start()
-        print("✅ Scheduler running every 60 minutes")
+        print("✅ Advanced AI Scanner v2 scheduler started")
 
 def stop_scheduler():
-    """Stop the scheduler"""
     if scheduler.running:
         scheduler.shutdown()
         print("⏹️  AI Scanner scheduler stopped")
