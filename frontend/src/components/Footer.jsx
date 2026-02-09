@@ -34,9 +34,9 @@ export default function Footer() {
                 <div className="footer-bottom">
                     <p>&copy; {currentYear} DevAlert. All rights reserved.</p>
                     <div className="footer-social">
-                        <a href="#" className="social-icon"><i className="fab fa-github"></i></a>
-                        <a href="#" className="social-icon"><i className="fab fa-twitter"></i></a>
-                        <a href="#" className="social-icon"><i className="fab fa-linkedin"></i></a>
+                        <a href="#" className="social-icon"><span className="material-icons">code</span></a>
+                        <a href="#" className="social-icon"><span className="material-icons">share</span></a>
+                        <a href="#" className="social-icon"><span className="material-icons">public</span></a>
                     </div>
                 </div>
             </div>

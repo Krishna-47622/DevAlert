@@ -20,6 +20,8 @@ import VerifyEmail from './pages/VerifyEmail';
 import AccountSettings from './pages/AccountSettings';
 import AboutPage from './pages/AboutPage';
 import Footer from './components/Footer';
+import ErrorBoundary from './components/ErrorBoundary';
+import './index.css';
 
 function PrivateRoute({ children, adminOnly = false }) {
   const user = JSON.parse(localStorage.getItem('user') || 'null');
