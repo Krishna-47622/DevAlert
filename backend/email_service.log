@@ -1,0 +1,7 @@
+2026-02-08 20:36:39,613 - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-02-08 20:36:39,615 - INFO - Added job "AI Web Scanner" to job store "default"
+2026-02-08 20:36:39,615 - INFO - Scheduler started
+2026-02-08 20:36:39,625 - WARNING -  * Debugger is active!
+2026-02-08 20:36:39,628 - INFO -  * Debugger PIN: 272-267-646
+2026-02-08 20:37:51,470 - INFO -  * Detected change in 'D:\\ADD(DevAlert)\\backend\\services\\email_service.py', reloading
+2026-02-08 20:37:51,470 - INFO - Scheduler has been shut down

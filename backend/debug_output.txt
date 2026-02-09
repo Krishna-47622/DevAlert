@@ -1,0 +1,57 @@
+Starting debug script...
+Database tables ensured
+🔄 Running automatic database migration...
+🔧 Migrating database: sqlite://...
+⚠️  SQLite detected - Using alternative migration approach
+⚠️  Column email_verified might already exist or error: (sqlite3.OperationalError) no such table: users
+[SQL: ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT 0]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+⚠️  Column email_verification_token might already exist or error: (sqlite3.OperationalError) no such table: users
+[SQL: ALTER TABLE users ADD COLUMN email_verification_token TEXT]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+⚠️  Column email_verification_sent_at might already exist or error: (sqlite3.OperationalError) no such table: users
+[SQL: ALTER TABLE users ADD COLUMN email_verification_sent_at TIMESTAMP]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+⚠️  Column password_reset_token might already exist or error: (sqlite3.OperationalError) no such table: users
+[SQL: ALTER TABLE users ADD COLUMN password_reset_token TEXT]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+⚠️  Column password_reset_expires_at might already exist or error: (sqlite3.OperationalError) no such table: users
+[SQL: ALTER TABLE users ADD COLUMN password_reset_expires_at TIMESTAMP]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+⚠️  Column two_factor_enabled might already exist or error: (sqlite3.OperationalError) no such table: users
+[SQL: ALTER TABLE users ADD COLUMN two_factor_enabled BOOLEAN DEFAULT 0]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+⚠️  Column two_factor_secret might already exist or error: (sqlite3.OperationalError) no such table: users
+[SQL: ALTER TABLE users ADD COLUMN two_factor_secret TEXT]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+⚠️  Column oauth_provider might already exist or error: (sqlite3.OperationalError) no such table: users
+[SQL: ALTER TABLE users ADD COLUMN oauth_provider TEXT]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+⚠️  Column oauth_provider_id might already exist or error: (sqlite3.OperationalError) no such table: users
+[SQL: ALTER TABLE users ADD COLUMN oauth_provider_id TEXT]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+ℹ️  Note: SQLite doesn't support modifying column constraints easily.
+   password_hash is already created, OAuth users will need empty string workaround
+
+🎉 Database migration completed!
+💡 Next steps:
+   1. Update your .env file with email service credentials
+   2. Configure OAuth client IDs and secrets
+   3. Restart your Flask application
+✅ Database migration finished
+✅ AI Scanner scheduler started - running every 30 minutes
+✅ AI Scanner scheduler started successfully.
+Imports successful
+----- DEBUGGING USER: krishnachaitanya2008reddy@gmail.com -----
+✅ User found: ID=2, Username=krishnachaitanya2008reddy, Role=participant
+   OAuth Provider: google
+   Password Hash: None (OAuth)
+
+----- ATTEMPTING TO SEND RESET EMAIL -----
+Function returned: True
+Note: The actual sending happens in a background thread.
+Wait a few seconds for thread output...
+✅ Brevo email sent to krishnachaitanya2008reddy@gmail.com
+
+----- DONE -----
+⏹️  AI Scanner scheduler stopped

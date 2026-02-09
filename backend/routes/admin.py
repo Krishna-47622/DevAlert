@@ -458,3 +458,86 @@ def test_email_config():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+@admin_bp.route('/seed-db', methods=['GET'])
+def seed_database():
+    """Seed the database SAFELY (only adds missing initial data)"""
+    try:
+        secret = request.args.get('secret')
+        # Allow checking against SECRET_KEY or a hardcoded setup secret
+        if secret != current_app.config['SECRET_KEY'] and secret != 'setup-2024':
+             return jsonify({'error': 'Unauthorized'}), 403
+             
+        from models import User, Hackathon
+        from werkzeug.security import generate_password_hash
+        from datetime import datetime, timedelta
+        
+        created_items = []
+
+        # 1. Ensure Admin Exists
+        admin = User.query.filter_by(email='krishna@example.com').first()
+        if not admin:
+            admin = User(
+                username='Krishna',
+                email='krishna@example.com',
+                password_hash=generate_password_hash('1234'),
+                role='admin',
+                email_verified=True,
+                is_host_approved=True
+            )
+            db.session.add(admin)
+            created_items.append("Admin User")
+        
+        # 2. Ensure Sample Hoster Exists
+        hoster = User.query.filter_by(email='techhost@example.com').first()
+        if not hoster:
+            hoster = User(
+                username='techhost',
+                email='techhost@example.com',
+                password_hash=generate_password_hash('password'),
+                role='hoster',
+                organization='T-Hub',
+                designation='Manager',
+                email_verified=True,
+                is_host_approved=True
+            )
+            db.session.add(hoster)
+            created_items.append("Hoster User")
+            
+        # Commit users first to get IDs
+        db.session.commit()
+        
+        # 3. Add Sample Hackathon if it doesn't exist
+        # Re-fetch hoster to ensure we have the ID attached to session
+        hoster = User.query.filter_by(email='techhost@example.com').first()
+        
+        if hoster:
+            exists = Hackathon.query.filter_by(title='Hyderabad AI Hackathon 2026').first()
+            if not exists:
+                hackathon = Hackathon(
+                    title='Hyderabad AI Hackathon 2026',
+                    description='Build innovative AI solutions for real-world problems. Win prizes worth 5 lakhs!',
+                    organizer='T-Hub',
+                    location='Hyderabad, T-Hub',
+                    mode='Hybrid',
+                    deadline=datetime.utcnow() + timedelta(days=15),
+                    registration_link='https://www.linkedin.com',
+                    prize_pool='₹5,00,000',
+                    source='linkedin',
+                    status='approved',
+                    posted_by=hoster.id
+                )
+                db.session.add(hackathon)
+                created_items.append("Sample Hackathon")
+        
+        db.session.commit()
+        
+        if not created_items:
+            message = "Database already seeded. No new items added."
+        else:
+            message = f"Seeded successfully: {', '.join(created_items)}"
+            
+        return jsonify({'message': message + ' (Admin: krishna@example.com / 1234)'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

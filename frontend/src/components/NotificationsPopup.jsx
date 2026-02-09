@@ -12,6 +12,7 @@ export default function NotificationsPopup({ isOpen, onClose }) {
     useEffect(() => {
         if (isOpen) {
             fetchNotifications();
+            markAllAsRead();
         }
     }, [isOpen]);
 
@@ -43,6 +44,21 @@ export default function NotificationsPopup({ isOpen, onClose }) {
         }
     };
 
+    const markAllAsRead = async () => {
+        try {
+            // Mark all fetched unread notifications as read
+            const unreadIds = notifications
+                .filter(n => !n.is_read)
+                .map(n => n.id);
+
+            if (unreadIds.length > 0) {
+                await Promise.all(unreadIds.map(id => notificationsAPI.markAsRead(id)));
+            }
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
+    };
+
     const handleNotificationClick = async (notification) => {
         try {
             if (!notification.is_read) {
@@ -68,7 +84,7 @@ export default function NotificationsPopup({ isOpen, onClose }) {
                 <h3>Notifications</h3>
             </div>
 
-            <div className="notifications-popup-body">
+            <div className="notifications-popup-body" data-lenis-prevent>
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: '2rem' }}>
                         <div className="loading"></div>

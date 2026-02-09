@@ -71,6 +71,25 @@ def register():
         db.session.add(user)
         db.session.commit()
         
+        # Notify admins if this is a host request
+        if requested_host_access:
+            try:
+                from models import Notification
+                admins = User.query.filter_by(role='admin').all()
+                for admin in admins:
+                    admin_notif = Notification(
+                        user_id=admin.id,
+                        event_type='system',
+                        event_id=user.id,
+                        title='New Host Request',
+                        message=f'User {user.username} has requested host access.',
+                        is_read=False
+                    )
+                    db.session.add(admin_notif)
+                db.session.commit()
+            except Exception as e:
+                print(f"Warning: Could not notify admins: {e}")
+        
         # Send verification email
         frontend_url = current_app.config.get('FRONTEND_URL')
         try:

@@ -42,10 +42,9 @@ export default function AdminPage() {
     useEffect(() => {
         fetchPending();
         fetchUsers();
+        fetchHostRequests(); // Fetch on mount for badge count
         if (activeTab === 'manage') {
             fetchAllOpportunities();
-        } else if (activeTab === 'hostRequests') {
-            fetchHostRequests();
         }
     }, [activeTab]);
 

@@ -43,63 +43,80 @@ function CursorMesh() {
             const y = (mouseRef.current.y * viewport.height) / 2;
 
             // Smooth lerp to the mouse position
-            sphereRef.current.position.lerp(new THREE.Vector3(x, y, 0), 0.15);
+            sphereRef.current.position.lerp(new THREE.Vector3(x, y, 0), 0.2); // Increased lerp for better responsiveness
 
             // Scale animation based on hover
-            const targetScale = hovered ? 1.3 : 1;
-            sphereRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+            const targetScale = hovered ? 1.4 : 1;
+            sphereRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.15);
         }
 
         if (materialRef.current) {
             // Smooth color transition
-            const targetColor = new THREE.Color(hovered ? "#ff0000" : "#ffffff"); // Red on hover, White normally
-            materialRef.current.color.lerp(targetColor, 0.05); // Slower transition (0.05)
-            materialRef.current.emissive.lerp(targetColor, 0.05);
+            const targetColor = new THREE.Color(hovered ? "#6366f1" : "#ffffff"); // Indigo on hover, White normally
+            materialRef.current.color.lerp(targetColor, 0.1);
+            materialRef.current.emissive.lerp(targetColor, 0.1);
         }
     });
 
     return (
-        <Sphere ref={sphereRef} args={[0.06, 32, 32]}>
+        <Sphere ref={sphereRef} args={[0.05, 32, 32]}>
             <MeshDistortMaterial
                 ref={materialRef}
                 color="#ffffff"
                 emissive="#ffffff"
-                emissiveIntensity={0.5}
-                distort={0.3}
-                speed={2}
-                roughness={0.2}
-                metalness={0.8}
+                emissiveIntensity={0.6}
+                distort={0.4}
+                speed={3}
+                roughness={0.1}
+                metalness={0.9}
             />
         </Sphere>
     );
 }
 
 export default function Cursor() {
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+    useEffect(() => {
+        const checkTouch = () => {
+            setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+        };
+        checkTouch();
+
+        if (!('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
+            document.body.classList.add('custom-cursor-active');
+        }
+
+        return () => {
+            document.body.classList.remove('custom-cursor-active');
+        };
+    }, []);
+
+    if (isTouchDevice) return null;
+
     return (
         <div style={{
             position: 'fixed',
             top: 0,
+            left: 0,
             width: '100vw',
             height: '100vh',
             pointerEvents: 'none',
-            zIndex: 20000
+            zIndex: 999999, // Extremely high z-index
+            mixBlendMode: 'difference' // Added for better visibility
         }}>
             <Canvas
                 orthographic
-                events={null} // Disable R3F event system
+                events={null}
                 camera={{ position: [0, 0, 10], zoom: 100 }}
                 gl={{
                     alpha: true,
                     antialias: true,
                     powerPreference: "high-performance",
-                    preserveDrawingBuffer: true
                 }}
                 style={{ background: 'transparent', pointerEvents: 'none' }}
             >
-                <ambientLight intensity={0.6} />
-                <pointLight position={[10, 10, 10]} intensity={1.5} />
-                <pointLight position={[-10, -10, 10]} intensity={0.5} />
-
+                <ambientLight intensity={1} />
                 <CursorMesh />
             </Canvas>
         </div>

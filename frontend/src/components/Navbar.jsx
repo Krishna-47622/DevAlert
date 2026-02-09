@@ -9,6 +9,7 @@ export default function Navbar() {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -34,8 +35,13 @@ export default function Navbar() {
         navigate('/login');
     };
 
-    const toggleNotifications = () => {
+    const toggleNotifications = (e) => {
+        e.stopPropagation();
         setShowNotifications(!showNotifications);
+    };
+
+    const toggleMobileMenu = () => {
+        setIsMobileMenuOpen(!isMobileMenuOpen);
     };
 
     const navLinkClass = ({ isActive }) => isActive ? 'nav-link active' : 'nav-link';
@@ -49,32 +55,37 @@ export default function Navbar() {
                         <span style={{ color: 'var(--primary-color)' }}>.</span>
                     </Link>
 
-                    <ul className="navbar-nav" style={{ display: 'flex', gap: '2rem', listStyle: 'none', margin: 0, padding: 0, alignItems: 'center' }}>
+                    {/* Mobile Menu Toggle */}
+                    <button className="mobile-menu-toggle" onClick={toggleMobileMenu}>
+                        <span className="material-icons">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+                    </button>
+
+                    <ul className={`navbar-nav ${isMobileMenuOpen ? 'mobile-active' : ''}`} style={{ display: 'flex', gap: '2rem', listStyle: 'none', margin: 0, padding: 0, alignItems: 'center' }}>
                         {user ? (
                             <>
                                 <li>
-                                    <Magnetic><NavLink to="/" className={navLinkClass} end>Dashboard</NavLink></Magnetic>
+                                    <Magnetic><NavLink to="/" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)} end>Dashboard</NavLink></Magnetic>
                                 </li>
                                 {user.role === 'admin' && (
                                     <li>
-                                        <Magnetic><NavLink to="/admin" className={navLinkClass}>Admin</NavLink></Magnetic>
+                                        <Magnetic><NavLink to="/admin" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Admin</NavLink></Magnetic>
                                     </li>
                                 )}
                                 {(user.role === 'hoster' || user.role === 'admin') && (
                                     <>
                                         <li>
-                                            <Magnetic><NavLink to="/host-event" className={navLinkClass}>Host Event</NavLink></Magnetic>
+                                            <Magnetic><NavLink to="/host-event" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Host Event</NavLink></Magnetic>
                                         </li>
                                         <li>
-                                            <Magnetic><NavLink to="/applicants" className={navLinkClass}>Applicants</NavLink></Magnetic>
+                                            <Magnetic><NavLink to="/applicants" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Applicants</NavLink></Magnetic>
                                         </li>
                                     </>
                                 )}
                                 <li>
-                                    <Magnetic><NavLink to="/applicant" className={navLinkClass}>Opportunities</NavLink></Magnetic>
+                                    <Magnetic><NavLink to="/applicant" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Opportunities</NavLink></Magnetic>
                                 </li>
                                 <li>
-                                    <Magnetic><NavLink to="/settings" className={navLinkClass}>Settings</NavLink></Magnetic>
+                                    <Magnetic><NavLink to="/settings" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Settings</NavLink></Magnetic>
                                 </li>
                                 <li style={{ position: 'relative' }}>
                                     <Magnetic>
@@ -139,7 +150,7 @@ export default function Navbar() {
                             </>
                         ) : (
                             <li>
-                                <NavLink to="/login" className={navLinkClass}>Login</NavLink>
+                                <NavLink to="/login" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Login</NavLink>
                             </li>
                         )}
                     </ul>
