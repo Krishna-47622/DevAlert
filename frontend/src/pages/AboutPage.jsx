@@ -75,7 +75,7 @@ export default function AboutPage() {
                 viewport={{ once: true }}
             >
                 <h3>Built at Malla Reddy University</h3>
-                <p>Academic Year 2024-2025</p>
+                <p>Academic Year 2025-2026</p>
             </motion.div>
         </div>
     );
