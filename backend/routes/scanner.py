@@ -11,6 +11,7 @@ import os
 import re
 import time
 import threading
+from urllib.parse import urljoin, urlparse
 
 scanner_bp = Blueprint('scanner', __name__)
 
@@ -21,6 +22,45 @@ scan_results = []
 # Google Custom Search API configuration
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY', '')
 GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
+
+def safe_generate_content(prompt):
+    """Resilient content generation that tries multiple model variants to avoid 404s"""
+    try:
+        import google.generativeai as genai
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key: 
+            print(">>> [Scanner] GEMINI_API_KEY missing - skipping AI step.", flush=True)
+            return None
+        
+        genai.configure(api_key=api_key)
+        
+        # Diagnostic: Check library version once
+        try:
+            sdk_version = getattr(genai, "__version__", "unknown")
+            print(f">>> [Scanner] genai SDK version: {sdk_version}", flush=True)
+        except:
+            pass
+            
+        # Try these identifiers in order
+        # Flash is preferred, Pro is fallback
+        model_variants = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro']
+        
+        for m_name in model_variants:
+            try:
+                print(f">>> [Scanner] Attempting generation with {m_name}...", flush=True)
+                model = genai.GenerativeModel(m_name)
+                # Reduced timeout to avoid hanging the thread if one variant is slow/unresponsive
+                response = model.generate_content(prompt)
+                if response and response.text:
+                    return response.text
+            except Exception as e:
+                print(f">>> [Scanner] Model {m_name} failed: {e}", flush=True)
+                continue
+                
+    except Exception as e:
+        print(f"❌ [Scanner] safe_generate_content fatal error: {e}", flush=True)
+        
+    return None
 
 def check_link_validity(url):
     """Perform a HEAD request to check if a link is still alive with browser-like headers"""
@@ -88,7 +128,6 @@ def create_notifications_for_event(event_type, event_id, title):
             )
             db.session.add(notification)
         db.session.commit()
-        print(f"✅ Created notifications for {len(users)} users about: {title}")
     except Exception as e:
         print(f"❌ Error creating notifications: {str(e)}")
         db.session.rollback()
@@ -300,35 +339,8 @@ def parse_event_data(search_result, event_type):
         }
 
 def analyze_with_gemini(event_block):
-    """Use gemini-1.5-flash to analyze and extract detailed structured data"""
+    """Use Gemini to analyze and extract detailed structured data"""
     try:
-        import google.generativeai as genai
-        import json
-        GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-        
-        if not GEMINI_API_KEY:
-            return event_block
-            
-        genai.configure(api_key=GEMINI_API_KEY)
-        
-        # Diagnostic: Check library version
-        try:
-            sdk_version = getattr(genai, "__version__", "unknown")
-            print(f">>> [Scanner] genai SDK version: {sdk_version}", flush=True)
-        except:
-            pass
-            
-        # Robust Model Selection
-        model_name = 'gemini-1.5-flash'
-        try:
-            model = genai.GenerativeModel(model_name)
-        except Exception as e:
-            print(f">>> [Scanner] Model {model_name} setup fail: {e}. Trying fallback.", flush=True)
-            try:
-                model = genai.GenerativeModel(f'models/{model_name}')
-            except:
-                model = genai.GenerativeModel('gemini-pro')
-            
         url = event_block.get('registration_link') or event_block.get('application_link')
         page_text = ""
         if url:
@@ -359,13 +371,15 @@ def analyze_with_gemini(event_block):
         {context}
         """
         
-        response = model.generate_content(prompt)
-        text = response.text
+        text_response = safe_generate_content(prompt)
+        if not text_response:
+            return event_block # Return basic block if AI fails
         
-        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        json_match = re.search(r'\{.*\}', text_response, re.DOTALL)
         if not json_match:
             return event_block
             
+        import json
         data = json.loads(json_match.group(0))
         
         is_legit = data.get('is_legit', True)
@@ -389,14 +403,9 @@ def analyze_with_gemini(event_block):
         except:
             pass
             
-        # HANDLE INTERNSHIP DETECTION WITHIN HACKATHON
-        if data.get('is_internship_inside_hackathon') and event_block.get('type') == 'hackathon':
-             event_block['also_internship'] = True
-             print(f"DEBUG: Found internship opportunity inside hackathon: {event_block['title']}")
-            
         return event_block
     except Exception as e:
-        print(f"DEBUG: Gemini 1.5 Analysis Error: {e}")
+        print(f"DEBUG: Gemini Analysis Error: {e}")
         return event_block
 
 def get_dynamic_queries(event_type):
@@ -410,23 +419,6 @@ def get_dynamic_queries(event_type):
     default_interns = ["site:internshala.com software intern 2026", "site:unstop.com internships", "site:careers.google.com student roles", "site:internship.aicte-india.org"]
     
     try:
-        import google.generativeai as genai
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key: return default_hacks if event_type == 'hackathon' else default_interns
-        
-        genai.configure(api_key=api_key)
-        
-        # Robust Model Selection
-        model_name = 'gemini-1.5-flash'
-        try:
-            model = genai.GenerativeModel(model_name)
-        except:
-            try:
-                model = genai.GenerativeModel(f'models/{model_name}')
-            except:
-                model = genai.GenerativeModel('gemini-pro')
-        
-        current_date = datetime.now().strftime("%B %Y")
         prompt = f"""
         Generate 8 highly targeted Google search queries (using site: operator where possible) to find the LATEST and ACTIVE {event_type}s for 2026.
         Target these platforms specifically: {sources.get(event_type)}.
@@ -435,8 +427,11 @@ def get_dynamic_queries(event_type):
         Return ONLY the queries, one per line.
         """
         
-        response = model.generate_content(prompt)
-        queries = [q.strip() for q in response.text.split('\n') if q.strip() and ('site:' in q or event_type in q.lower())]
+        text_response = safe_generate_content(prompt)
+        if not text_response:
+            return default_hacks if event_type == 'hackathon' else default_interns
+            
+        queries = [q.strip() for q in text_response.split('\n') if q.strip() and ('site:' in q or event_type in q.lower())]
         return queries[:8] if len(queries) >= 3 else (default_hacks if event_type == 'hackathon' else default_interns)
     except Exception as e:
         print(f"DEBUG: Dynamic query error: {e}")
@@ -461,15 +456,12 @@ def get_absolute_url(base_url, relative_url):
     # Standard join for truly relative paths
     return urljoin(base_url, relative_url)
 
-from urllib.parse import urljoin, urlparse
-
 DIRECT_SOURCES = {
     'hackathon': [
         'https://devfolio.co/hackathons',
         'https://mlh.io/seasons/2026/events',
         'https://devpost.com/hackathons',
-        'https://hackathons.hackclub.com/',
-        'https://www.hackerearth.com/challenges/hackathon/'
+        'https://hackerearth.com/challenges/hackathon/'
     ],
     'internship': [
         'https://internshala.com/internships',
@@ -488,24 +480,6 @@ def extract_bulk_from_page(url, event_type):
         return []
 
     try:
-        import google.generativeai as genai
-        import json
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key: return []
-
-        genai.configure(api_key=api_key)
-        
-        # Robust Model Selection
-        model_name = 'gemini-1.5-flash'
-        try:
-            model = genai.GenerativeModel(model_name)
-        except Exception as e:
-            print(f">>> [Scanner] Primary model setup failed for extraction: {e}. Trying absolute.", flush=True)
-            try:
-                model = genai.GenerativeModel(f'models/{model_name}')
-            except:
-                model = genai.GenerativeModel('gemini-pro')
-
         prompt = f"""
         I am providing the text content from a web page: {url}
         Extract a LIST of all ACTIVE and FUTURE {event_type}s for late 2025 or 2026.
@@ -531,12 +505,14 @@ def extract_bulk_from_page(url, event_type):
         {page_text[:8000]}
         """
 
-        response = model.generate_content(prompt)
-        text = response.text
-        
-        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        text_response = safe_generate_content(prompt)
+        if not text_response:
+            return []
+
+        json_match = re.search(r'\{.*\}', text_response, re.DOTALL)
         if not json_match: return []
 
+        import json
         data = json.loads(json_match.group(0))
         extracted = data.get('opportunities', [])
         print(f">>> [Scanner] Gemini extracted {len(extracted)} raw opportunities from {url}", flush=True)
@@ -556,8 +532,6 @@ def extract_bulk_from_page(url, event_type):
         return valid_results
     except Exception as e:
         print(f"❌ [Scanner] Direct extraction error for {url}: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
         return []
 
 def _perform_scan():
@@ -617,11 +591,6 @@ def _perform_scan():
                             status='pending',
                             source='direct_scan'
                         )
-                        db.session.add(entry)
-                        db.session.flush()
-                        create_notifications_for_event('hackathon', entry.id, entry.title)
-                        new_hacks += 1
-                        print(f">>> [Scanner] SAVED Hackathon: {entry.title}", flush=True)
                     else:
                         entry = Internship(
                             title=enriched['title'],
@@ -636,11 +605,13 @@ def _perform_scan():
                             status='pending',
                             source='direct_scan'
                         )
-                        db.session.add(entry)
-                        db.session.flush()
-                        create_notifications_for_event('internship', entry.id, entry.title)
-                        new_interns += 1
-                        print(f">>> [Scanner] SAVED Internship: {entry.title}", flush=True)
+                    
+                    db.session.add(entry)
+                    db.session.flush()
+                    create_notifications_for_event(e_type, entry.id, entry.title)
+                    if e_type == 'hackathon': new_hacks += 1
+                    else: new_interns += 1
+                    print(f">>> [Scanner] SAVED: {entry.title}", flush=True)
 
             # 2. GOOGLE SEARCH FALLBACK (Discovery)
             queries = get_dynamic_queries(e_type)
@@ -648,7 +619,6 @@ def _perform_scan():
             for q in queries:
                 print(f">>> [Scanner] Running discovery query: {q}", flush=True)
                 results = google_search(q, num_results=5)
-                print(f">>> [Scanner] Search found {len(results)} raw results", flush=True)
                 for res in results:
                     if not check_link_validity(res['link']): 
                         print(f">>> [Scanner] Filtered (Invalid Link): {res['link']}", flush=True)
@@ -663,37 +633,34 @@ def _perform_scan():
                     if not enriched: continue
                     
                     if e_type == 'hackathon':
-                         final_data = {
-                             'title': enriched.get('title'),
-                             'description': enriched.get('description'),
-                             'organizer': enriched.get('organizer'),
-                             'location': enriched.get('location'),
-                             'mode': enriched.get('mode'),
-                             'deadline': enriched.get('deadline'),
-                             'prize_pool': enriched.get('prize_pool'),
-                             'registration_link': enriched.get('registration_link'),
-                             'status': 'pending',
-                             'source': 'ai_scan'
-                         }
-                         entry = Hackathon(**final_data)
-                         db.session.add(entry)
+                         entry = Hackathon(
+                             title=enriched.get('title'),
+                             description=enriched.get('description'),
+                             organizer=enriched.get('organizer'),
+                             location=enriched.get('location'),
+                             mode=enriched.get('mode'),
+                             deadline=enriched.get('deadline'),
+                             prize_pool=enriched.get('prize_pool'),
+                             registration_link=enriched.get('registration_link'),
+                             status='pending',
+                             source='ai_scan'
+                         )
                     else:
-                         final_data = {
-                             'title': enriched.get('title'),
-                             'company': enriched.get('company'),
-                             'description': enriched.get('description'),
-                             'location': enriched.get('location'),
-                             'mode': enriched.get('mode'),
-                             'duration': enriched.get('duration', '3 months'),
-                             'deadline': enriched.get('deadline'),
-                             'skills_required': enriched.get('skills_required', 'Programming'),
-                             'application_link': enriched.get('application_link'),
-                             'status': 'pending',
-                             'source': 'ai_scan'
-                         }
-                         entry = Internship(**final_data)
-                         db.session.add(entry)
+                         entry = Internship(
+                             title=enriched.get('title'),
+                             company=enriched.get('company'),
+                             description=enriched.get('description'),
+                             location=enriched.get('location'),
+                             mode=enriched.get('mode'),
+                             duration=enriched.get('duration', '3 months'),
+                             deadline=enriched.get('deadline'),
+                             skills_required=enriched.get('skills_required', 'Programming'),
+                             application_link=enriched.get('application_link'),
+                             status='pending',
+                             source='ai_scan'
+                         )
                     
+                    db.session.add(entry)
                     db.session.flush()
                     create_notifications_for_event(e_type, entry.id, entry.title)
                     if e_type == 'hackathon': new_hacks += 1
@@ -712,7 +679,6 @@ def _perform_scan():
         
         global scan_results
         scan_results.append(result)
-        print(f"✅ Advanced Direct Scan complete: Found {new_hacks} Hacks, {new_interns} Internships.")
         return result
         
     except Exception as e:
@@ -722,47 +688,24 @@ def _perform_scan():
 
 def ai_scan_and_save(app=None):
     """
-    Main scanning function with two-stage processing.
-    Designed to be thread-safe for background execution.
+    Main scanning function with background safety.
     """
     print(f">>> [Scanner Thread] Worker started at {datetime.now()}", flush=True)
-    
-    # Wait a moment for the parent request to complete and return its response
-    try:
-        print(">>> [Scanner Thread] Sleeping for 2s to allow parent response...", flush=True)
-        time.sleep(2)
-    except Exception as e:
-        print(f">>> [Scanner Thread] Sleep interrupted: {e}", flush=True)
-
-    print(f">>> [Scanner Thread] Starting Advanced Multi-Site Scan...", flush=True)
+    time.sleep(2)
     
     try:
         if app:
             with app.app_context():
-                print(">>> [Scanner Thread] App context acquired via passed app", flush=True)
                 return _perform_scan()
         else:
-            from flask import current_app
-            try:
-                # This might fail in a background thread if context not pushed
-                if current_app:
-                    print(">>> [Scanner Thread] App context found in current_app", flush=True)
-                    return _perform_scan()
-            except:
-                pass
-                
-            print(">>> [Scanner Thread] Creating fresh app context...", flush=True)
             from app import create_app
             temp_app = create_app()
             with temp_app.app_context():
                 return _perform_scan()
     except Exception as e:
-        print(f"❌ [Scanner Thread] Scan failed with error: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
+        print(f"❌ [Scanner Thread] Scan failed: {e}", flush=True)
         return {'error': str(e)}
     finally:
-        print(">>> [Scanner Thread] Cleaning up session...", flush=True)
         try:
             db.session.remove()
         except:
@@ -772,9 +715,6 @@ def ai_scan_and_save(app=None):
 def trigger_scan():
     """Manual scan trigger - runs in background with DB safety"""
     app_obj = current_app._get_current_object()
-    
-    # CRITICAL: Clean up current request session and dispose pool
-    # This prevents the background thread from inheriting corrupted state.
     db.session.remove()
     db.engine.dispose()
     
@@ -784,18 +724,16 @@ def trigger_scan():
     
     return jsonify({
         "status": "success",
-        "message": "Scan started in background. Results will appear in a few minutes.",
+        "message": "Scan started in background.",
         "timestamp": datetime.now().isoformat()
     })
 
 @scanner_bp.route('/results', methods=['GET'])
 def get_scan_results():
-    """Get last 10 results"""
     return jsonify({"results": scan_results[-10:]})
 
 @scanner_bp.route('/schedule', methods=['GET'])
 def get_schedule_status():
-    """Scheduler info"""
     jobs = scheduler.get_jobs()
     return jsonify({
         "running": scheduler.running,
@@ -803,7 +741,6 @@ def get_schedule_status():
     })
 
 def start_scheduler(app):
-    """Start scan every 60m"""
     if not scheduler.running:
         scheduler.add_job(func=ai_scan_and_save, trigger="interval", minutes=60, id='ai_scanner_v2', args=[app])
         scheduler.start()
