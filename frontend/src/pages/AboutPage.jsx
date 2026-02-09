@@ -18,18 +18,6 @@ export default function AboutPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
             >
-                <div className="about-logo-container" style={{ marginBottom: '1.5rem' }}>
-                    <img
-                        src="/logo.png"
-                        alt="DevAlert Logo"
-                        style={{
-                            height: '120px',
-                            width: 'auto',
-                            mixBlendMode: 'screen',
-                            filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3))'
-                        }}
-                    />
-                </div>
                 <h1>About <span className="text-gradient">DevAlert</span></h1>
                 <p className="subtitle">Empowering the next generation of developers.</p>
             </motion.div>
