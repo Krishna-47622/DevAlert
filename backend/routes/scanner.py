@@ -412,39 +412,183 @@ def get_dynamic_queries(event_type):
         print(f"DEBUG: Dynamic query error: {e}")
         return default_hacks if event_type == 'hackathon' else default_interns
 
+from urllib.parse import urljoin, urlparse
+
+DIRECT_SOURCES = {
+    'hackathon': [
+        'https://devfolio.co/hackathons',
+        'https://mlh.io/seasons/2026/events',
+        'https://devpost.com/hackathons',
+        'https://hackathons.hackclub.com/',
+        'https://www.hackerearth.com/challenges/hackathon/'
+    ],
+    'internship': [
+        'https://internshala.com/internships',
+        'https://unstop.com/internships',
+        'https://internship.aicte-india.org/module_admin/index.php',
+        'https://careers.google.com/students/'
+    ]
+}
+
+def get_absolute_url(base_url, relative_url):
+    """Convert relative URL to absolute URL"""
+    if not relative_url: return ""
+    if relative_url.startswith(('http://', 'https://')):
+        return relative_url
+    return urljoin(base_url, relative_url)
+
+def extract_bulk_from_page(url, event_type):
+    """Fetch page text and use Gemini for bulk opportunity extraction"""
+    print(f"[AI Scanner] Directly scanning source: {url}")
+    page_text = fetch_page_text(url)
+    if not page_text or len(page_text) < 200:
+        print(f"DEBUG: Page text too short or empty for {url}")
+        return []
+
+    try:
+        import google.generativeai as genai
+        import json
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key: return []
+
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+
+        prompt = f"""
+        I am providing the text content from a web page: {url}
+        Extract a LIST of all ACTIVE and FUTURE {event_type}s for late 2025 or 2026.
+        Ignore old or finished events.
+        
+        STRICT JSON FORMAT:
+        {{
+            "opportunities": [
+                {{
+                    "name": "Full Title",
+                    "link": "Relative or Absolute Link",
+                    "deadline": "YYYY-MM-DD",
+                    "location": "City, Country or 'Online'",
+                    "prize_pool": "Amount or 'Not specified'",
+                    "organizer": "Company or Org Name",
+                    "description": "Short summary",
+                    "mode": "Online/Offline/Hybrid"
+                }}
+            ]
+        }}
+        
+        PAGE TEXT CONTENT:
+        {page_text[:8000]}
+        """
+
+        response = model.generate_content(prompt)
+        text = response.text
+        
+        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        if not json_match: return []
+
+        data = json.loads(json_match.group(0))
+        extracted = data.get('opportunities', [])
+        
+        # Post-process links and validate
+        valid_results = []
+        base_domain = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+        
+        for opp in extracted:
+            opp['link'] = get_absolute_url(base_domain, opp.get('link'))
+            if check_link_validity(opp['link']):
+                valid_results.append(opp)
+        
+        print(f"DEBUG: Gemini found {len(valid_results)} direct opportunities from {url}")
+        return valid_results
+    except Exception as e:
+        print(f"DEBUG: Direct extraction error for {url}: {e}")
+        return []
+
 def _perform_scan():
-    """Internal scan logic with source diversity and model mapping"""
+    """Internal scan logic with direct site crawling and fallback search"""
     try:
         new_hacks = 0
         new_interns = 0
         
-        # 1. Targets
-        task_types = [
+        task_configs = [
             ('hackathon', Hackathon),
             ('internship', Internship)
         ]
         
-        for e_type, ModelClass in task_types:
+        for e_type, ModelClass in task_configs:
+            # 1. DIRECT SCANNING (Higher priority/quality)
+            for direct_url in DIRECT_SOURCES.get(e_type, []):
+                bulk_results = extract_bulk_from_page(direct_url, e_type)
+                for res in bulk_results:
+                    if ModelClass.query.filter_by(title=res['name']).first(): continue
+                    
+                    # Prepare for enrichment/save
+                    event_data = {
+                        'title': res['name'],
+                        'description': res['description'],
+                        'organizer': res['organizer'] if e_type == 'hackathon' else None,
+                        'company': res['organizer'] if e_type == 'internship' else None,
+                        'location': res['location'],
+                        'mode': res['mode'],
+                        'registration_link': res['link'] if e_type == 'hackathon' else None,
+                        'application_link': res['link'] if e_type == 'internship' else None,
+                        'source': 'direct_scan'
+                    }
+                    
+                    # High-fidelity enrichment per individual event
+                    enriched = analyze_with_gemini(event_data)
+                    if not enriched: continue
+                    
+                    # Final Field Mapping
+                    if e_type == 'hackathon':
+                        entry = Hackathon(
+                            title=enriched['title'],
+                            description=enriched['description'],
+                            organizer=enriched.get('organizer', 'Unknown'),
+                            location=enriched['location'],
+                            mode=enriched['mode'],
+                            deadline=enriched.get('deadline'),
+                            prize_pool=enriched.get('prize_pool', 'Not specified'),
+                            registration_link=enriched['registration_link'],
+                            status='pending',
+                            source='direct_scan'
+                        )
+                        db.session.add(entry)
+                        db.session.flush()
+                        create_notifications_for_event('hackathon', entry.id, entry.title)
+                        new_hacks += 1
+                    else:
+                        entry = Internship(
+                            title=enriched['title'],
+                            company=enriched.get('company', 'Unknown'),
+                            description=enriched['description'],
+                            location=enriched['location'],
+                            mode=enriched['mode'],
+                            duration='3 months',
+                            deadline=enriched.get('deadline'),
+                            skills_required=enriched.get('skills_required', 'Programming'),
+                            application_link=enriched['application_link'],
+                            status='pending',
+                            source='direct_scan'
+                        )
+                        db.session.add(entry)
+                        db.session.flush()
+                        create_notifications_for_event('internship', entry.id, entry.title)
+                        new_interns += 1
+
+            # 2. GOOGLE SEARCH FALLBACK (Discovery)
             queries = get_dynamic_queries(e_type)
             for q in queries:
-                print(f"[AI Scanner] Running query: {q}")
+                print(f"[AI Scanner] Running discovery query: {q}")
                 results = google_search(q, num_results=5)
-                
                 for res in results:
-                    # Basic validity and duplicate check
                     if not check_link_validity(res['link']): continue
                     if ModelClass.query.filter_by(title=res['title']).first(): continue
                     
                     event_data = parse_event_data(res, e_type)
-                    event_data['type'] = e_type 
-                    
-                    # Stage 2: Gemini 1.5 Flash Enrichment (High fidelity)
                     enriched = analyze_with_gemini(event_data)
                     if not enriched: continue
                     
-                    # Model specific field mapping to avoid DB errors
                     if e_type == 'hackathon':
-                         # Hackathon fields: title, description, organizer, location, mode, deadline, start_date, prize_pool, registration_link, status, source
                          final_data = {
                              'title': enriched.get('title'),
                              'description': enriched.get('description'),
@@ -459,29 +603,7 @@ def _perform_scan():
                          }
                          entry = Hackathon(**final_data)
                          db.session.add(entry)
-                         db.session.flush()
-                         create_notifications_for_event('hackathon', entry.id, entry.title)
-                         new_hacks += 1
-                         
-                         # If it's a combo, also save as internship
-                         if enriched.get('also_internship'):
-                              intern_data = {
-                                  'title': f"[Internship/Hiring] {enriched['title']}",
-                                  'company': enriched.get('organizer', 'Hackathon Partner'),
-                                  'description': f"Note: Found via Hackathon. This event includes hiring/internship opportunities. Description: {enriched.get('description')}",
-                                  'location': enriched.get('location'),
-                                  'mode': enriched.get('mode'),
-                                  'duration': 'Not specified',
-                                  'deadline': enriched.get('deadline'),
-                                  'application_link': enriched.get('registration_link'),
-                                  'status': 'pending',
-                                  'source': 'ai_scan'
-                              }
-                              intern_entry = Internship(**intern_data)
-                              db.session.add(intern_entry)
-                              new_interns += 1
                     else:
-                         # Internship fields: title, company, description, location, mode, duration, stipend, deadline, skills_required, application_link, status, source
                          final_data = {
                              'title': enriched.get('title'),
                              'company': enriched.get('company'),
@@ -489,7 +611,6 @@ def _perform_scan():
                              'location': enriched.get('location'),
                              'mode': enriched.get('mode'),
                              'duration': enriched.get('duration', '3 months'),
-                             'stipend': enriched.get('stipend', 'Not specified'),
                              'deadline': enriched.get('deadline'),
                              'skills_required': enriched.get('skills_required', 'Programming'),
                              'application_link': enriched.get('application_link'),
@@ -498,9 +619,11 @@ def _perform_scan():
                          }
                          entry = Internship(**final_data)
                          db.session.add(entry)
-                         db.session.flush()
-                         create_notifications_for_event('internship', entry.id, entry.title)
-                         new_interns += 1
+                    
+                    db.session.flush()
+                    create_notifications_for_event(e_type, entry.id, entry.title)
+                    if e_type == 'hackathon': new_hacks += 1
+                    else: new_interns += 1
             
         db.session.commit()
         
@@ -513,7 +636,7 @@ def _perform_scan():
         
         global scan_results
         scan_results.append(result)
-        print(f"✅ Advanced Scan complete: Found {new_hacks} Hacks, {new_interns} Internships.")
+        print(f"✅ Advanced Direct Scan complete: Found {new_hacks} Hacks, {new_interns} Internships.")
         return result
         
     except Exception as e:
