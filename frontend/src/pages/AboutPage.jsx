@@ -2,11 +2,11 @@ import { motion } from 'framer-motion';
 import './AboutPage.css';
 
 const teamMembers = [
-    { name: "Team Lead", role: "Full Stack Developer", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack&skinColor=ffdbac" },
-    { name: "Team Member 1", role: "Frontend Specialist", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka&skinColor=ffdbac" },
-    { name: "Team Member 2", role: "UI/UX Designer", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&skinColor=ffdbac" },
-    { name: "Team Member 3", role: "Backend Developer", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maya&skinColor=ffdbac" },
-    { name: "Team Member 4", role: "Researcher & Content", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Leo&skinColor=ffdbac" },
+    { name: "Team Lead", role: "Full Stack Developer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Aiden&backgroundColor=transparent" },
+    { name: "Team Member 1", role: "Frontend Specialist", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Aneka&backgroundColor=transparent" },
+    { name: "Team Member 2", role: "UI/UX Designer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Cali&backgroundColor=transparent" },
+    { name: "Team Member 3", role: "Backend Developer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Dora&backgroundColor=transparent" },
+    { name: "Team Member 4", role: "Researcher & Content", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Felix&backgroundColor=transparent" },
 ];
 
 export default function AboutPage() {
