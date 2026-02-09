@@ -50,25 +50,9 @@ export default function Navbar() {
         <nav className="navbar" style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)' }}>
             <div className="container">
                 <div className="navbar-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '64px' }}>
-                    <Link to="/" className="navbar-brand" style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.8rem',
-                        fontSize: '1.5rem',
-                        fontWeight: 'bold',
-                        color: 'var(--text-primary)',
-                        textDecoration: 'none'
-                    }}>
-                        <img
-                            src="/logo.png"
-                            alt="DevAlert Logo"
-                            style={{
-                                height: '32px',
-                                width: 'auto',
-                                filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.2))'
-                            }}
-                        />
-                        <span>DevAlert<span style={{ color: 'var(--primary-color)' }}>.</span></span>
+                    <Link to="/" className="navbar-brand" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-primary)', textDecoration: 'none' }}>
+                        DevAlert
+                        <span style={{ color: 'var(--primary-color)' }}>.</span>
                     </Link>
 
                     {/* Mobile Menu Toggle */}
