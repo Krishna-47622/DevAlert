@@ -644,10 +644,53 @@ def _perform_scan():
         db.session.rollback()
         raise
 
+def ai_scan_and_save(app=None):
+    """
+    Main scanning function with two-stage processing.
+    Designed to be thread-safe for background execution.
+    """
+    print(f"[AI Scanner] Starting Advanced Multi-Site Scan at {datetime.now()}")
+    
+    # If app is passed, it should be the real application object, not a proxy
+    try:
+        if app:
+            with app.app_context():
+                result = _perform_scan()
+                db.session.remove() # Clean up session in thread
+                return result
+        else:
+            # Fallback to creating a fresh app if we're floating in a thread
+            from app import create_app
+            temp_app = create_app()
+            with temp_app.app_context():
+                result = _perform_scan()
+                db.session.remove()
+                return result
+    except Exception as e:
+        print(f"❌ Scan failed: {e}")
+        try:
+            db.session.remove()
+        except:
+            pass
+        return {'error': str(e)}
+
+import threading
+
 @scanner_bp.route('/scan', methods=['POST'])
 def trigger_scan():
-    """Manual scan trigger"""
-    return jsonify(ai_scan_and_save())
+    """Manual scan trigger - runs in background to prevent timeout"""
+    # Use the underlying app object to avoid current_app proxy issues in thread
+    app_obj = current_app._get_current_object()
+    
+    thread = threading.Thread(target=ai_scan_and_save, args=(app_obj,))
+    thread.daemon = True
+    thread.start()
+    
+    return jsonify({
+        "status": "success",
+        "message": "Scan started in background. Results will appear in a few minutes.",
+        "timestamp": datetime.now().isoformat()
+    })
 
 @scanner_bp.route('/results', methods=['GET'])
 def get_scan_results():
