@@ -18,7 +18,7 @@ scheduler = BackgroundScheduler()
 scan_results = []
 
 # Google Custom Search API configuration
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '')
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY', '')
 GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 
 def check_link_validity(url):
@@ -98,7 +98,8 @@ def google_search(query, num_results=10):
     Returns list of search results with title, link, and snippet
     """
     if not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
-        print("⚠️  Google API credentials not configured. Using fallback documentation data.")
+        if not GOOGLE_CSE_ID:
+            print(">>> [Scanner] Google Search Engine ID (GOOGLE_CSE_ID) missing. Using fallback scraper.", flush=True)
         return get_fallback_results(query)
     
     try:
