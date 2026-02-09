@@ -644,43 +644,51 @@ def _perform_scan():
         db.session.rollback()
         raise
 
+import time
+
 def ai_scan_and_save(app=None):
     """
     Main scanning function with two-stage processing.
     Designed to be thread-safe for background execution.
     """
+    # Wait a moment for the parent request to complete and return its response
+    time.sleep(1)
     print(f"[AI Scanner] Starting Advanced Multi-Site Scan at {datetime.now()}")
     
-    # If app is passed, it should be the real application object, not a proxy
     try:
         if app:
             with app.app_context():
-                result = _perform_scan()
-                db.session.remove() # Clean up session in thread
-                return result
+                return _perform_scan()
         else:
-            # Fallback to creating a fresh app if we're floating in a thread
+            from flask import current_app
+            try:
+                if current_app:
+                    return _perform_scan()
+            except:
+                pass
+                
             from app import create_app
             temp_app = create_app()
             with temp_app.app_context():
-                result = _perform_scan()
-                db.session.remove()
-                return result
+                return _perform_scan()
     except Exception as e:
         print(f"❌ Scan failed: {e}")
+        return {'error': str(e)}
+    finally:
         try:
             db.session.remove()
         except:
             pass
-        return {'error': str(e)}
-
-import threading
 
 @scanner_bp.route('/scan', methods=['POST'])
 def trigger_scan():
-    """Manual scan trigger - runs in background to prevent timeout"""
-    # Use the underlying app object to avoid current_app proxy issues in thread
+    """Manual scan trigger - runs in background with DB safety"""
     app_obj = current_app._get_current_object()
+    
+    # CRITICAL: Clean up current request session and dispose pool
+    # This prevents the background thread from inheriting corrupted state.
+    db.session.remove()
+    db.engine.dispose()
     
     thread = threading.Thread(target=ai_scan_and_save, args=(app_obj,))
     thread.daemon = True
