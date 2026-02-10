@@ -53,11 +53,8 @@ const Card = forwardRef(({ children, className = '', tilt = true, ...props }, re
         <div
             ref={cardRef}
             className={`card-wrapper ${className}`}
-            onMouseMove={handleMouse}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
             style={{
-                perspective: '800px',
+                perspective: '1000px',
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
@@ -67,6 +64,9 @@ const Card = forwardRef(({ children, className = '', tilt = true, ...props }, re
         >
             <motion.div
                 className="card"
+                onMouseMove={handleMouse}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
                 style={{
                     rotateX: tilt ? rotateX : 0,
                     rotateY: tilt ? rotateY : 0,
@@ -75,8 +75,11 @@ const Card = forwardRef(({ children, className = '', tilt = true, ...props }, re
                     width: '100%',
                     height: '100%',
                     position: 'relative',
-                    transition: 'none', // Disable CSS transition for smooth framer-motion
-                    ...props.style // Apply style here so borders/shadows tilt
+                    transition: 'none',
+                    backgroundColor: 'rgba(15, 15, 15, 0.4)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    ...props.style
                 }}
             >
                 {/* Glossy/Shine Overlay */}
@@ -85,9 +88,9 @@ const Card = forwardRef(({ children, className = '', tilt = true, ...props }, re
                         style={{
                             position: 'absolute',
                             inset: 0,
-                            background: 'radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(255,255,255,0.08), transparent 80%)',
+                            background: 'radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(255,255,255,0.1), transparent 80%)',
                             opacity: opacity,
-                            zIndex: 2,
+                            zIndex: 1,
                             pointerEvents: 'none',
                             borderRadius: 'inherit',
                             '--mouse-x': useTransform(x, (val) => `${val}px`),
@@ -96,7 +99,11 @@ const Card = forwardRef(({ children, className = '', tilt = true, ...props }, re
                     />
                 )}
 
-                <div style={{ position: 'relative', zIndex: 10, transform: 'translateZ(30px)' }}>
+                <div style={{
+                    position: 'relative',
+                    zIndex: 2,
+                    pointerEvents: 'auto'
+                }}>
                     {children}
                 </div>
             </motion.div>

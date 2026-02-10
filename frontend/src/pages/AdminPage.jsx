@@ -350,7 +350,7 @@ export default function AdminPage() {
                                         </p>
                                     </CardBody>
                                     <CardFooter>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', width: '100%' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', width: '100%', position: 'relative', zIndex: 10 }}>
                                             <button onClick={() => openModal(hackathon, 'hackathon')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>View</button>
                                             <button onClick={() => handleApprove('hackathon', hackathon.id)} className="btn btn-success" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>Approve</button>
                                             <button onClick={() => handleReject('hackathon', hackathon.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>Reject</button>
@@ -377,7 +377,7 @@ export default function AdminPage() {
                                         </p>
                                     </CardBody>
                                     <CardFooter>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', width: '100%' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', width: '100%', position: 'relative', zIndex: 10 }}>
                                             <button onClick={() => openModal(internship, 'internship')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>View</button>
                                             <button onClick={() => handleApprove('internship', internship.id)} className="btn btn-success" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>Approve</button>
                                             <button onClick={() => handleReject('internship', internship.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>Reject</button>
