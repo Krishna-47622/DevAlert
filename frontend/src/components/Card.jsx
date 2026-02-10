@@ -96,7 +96,7 @@ const Card = forwardRef(({ children, className = '', tilt = true, ...props }, re
                     />
                 )}
 
-                <div style={{ position: 'relative', zIndex: 1, transform: 'translateZ(20px)' }}>
+                <div style={{ position: 'relative', zIndex: 10, transform: 'translateZ(30px)' }}>
                     {children}
                 </div>
             </motion.div>
