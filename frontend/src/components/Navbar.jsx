@@ -115,9 +115,26 @@ export default function Navbar() {
                         animate={{ opacity: 1, width: 'auto', scale: 1 }}
                         exit={{ opacity: 0, width: 0, scale: 0.9 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '2rem', overflow: 'hidden', whiteSpace: 'nowrap', height: '100%' }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '2rem',
+                            overflowX: 'auto', // Enable horizontal scroll
+                            overflowY: 'hidden',
+                            whiteSpace: 'nowrap',
+                            height: '100%',
+                            msOverflowStyle: 'none',  /* IE and Edge */
+                            scrollbarWidth: 'none',   /* Firefox */
+                            WebkitOverflowScrolling: 'touch' // Smooth scroll on iOS
+                        }}
+                        className="navbar-scroll-container"
                     >
-                        <ul className="navbar-nav" style={{ display: 'flex', gap: '1.5rem', listStyle: 'none', margin: 0, padding: 0, alignItems: 'center', whiteSpace: 'nowrap' }}>
+                        <style>{`
+                            .navbar-scroll-container::-webkit-scrollbar {
+                                display: none; /* Hide scrollbar for Chrome, Safari and Opera */
+                            }
+                        `}</style>
+                        <ul className="navbar-nav" style={{ display: 'flex', gap: '1.5rem', listStyle: 'none', margin: 0, padding: '0 10px', alignItems: 'center', whiteSpace: 'nowrap' }}>
                             {user ? (
                                 <>
                                     <li>
@@ -314,9 +331,27 @@ export default function Navbar() {
                                         />
                                     </li>
                                     <li>
-                                        <button onClick={handleLogout} className="btn" style={{ padding: '0.4rem 0.8rem', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: '20px', cursor: 'pointer' }}>
+                                        <motion.button
+                                            onClick={handleLogout}
+                                            className="btn logout-btn"
+                                            whileHover={{
+                                                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                                                borderColor: 'var(--danger-color)',
+                                                color: 'var(--danger-color)',
+                                                boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)'
+                                            }}
+                                            style={{
+                                                padding: '0.4rem 1rem',
+                                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                color: 'var(--text-secondary)',
+                                                borderRadius: '20px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                        >
                                             Logout
-                                        </button>
+                                        </motion.button>
                                     </li>
                                 </>
                             ) : (
@@ -371,7 +406,7 @@ export default function Navbar() {
                 whileTap={{ scale: 0.9 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-                <span className="material-icons">arrow_forward_ios</span>
+                <span className="material-icons">keyboard_arrow_left</span>
             </motion.button>
         </motion.nav>
     );

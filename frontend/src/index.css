@@ -264,16 +264,18 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: 0.6rem;
+  padding: 0.6rem 1.2rem;
   font-family: var(--font-primary);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
 }
 
 .btn:disabled {
@@ -282,44 +284,54 @@ a:hover {
 }
 
 .btn-primary {
-  background-color: var(--color-accent);
+  background: linear-gradient(135deg, var(--color-accent), #4f46e5);
   color: white;
-  border-color: var(--color-accent);
+  border: none;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--color-accent-hover);
-  border-color: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 15px rgba(99, 102, 241, 0.36);
+  filter: brightness(1.1);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-secondary {
-  background-color: var(--color-bg-tertiary);
+  background-color: rgba(255, 255, 255, 0.05);
   color: var(--color-text-primary);
-  border-color: var(--color-border-light);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: var(--color-border-light);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .btn-success {
-  background-color: var(--color-success);
-  color: white;
-  border-color: var(--color-success);
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .btn-success:hover:not(:disabled) {
-  background-color: #059669;
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
 }
 
 .btn-danger {
-  background-color: var(--color-danger);
-  color: white;
-  border-color: var(--color-danger);
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #dc2626;
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
 }
 
 /* Cards */

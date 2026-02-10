@@ -184,14 +184,17 @@ export default function AdminPage() {
     // Style constants for reuse
     const tabButtonStyle = (isActive) => ({
         padding: '0.75rem 1.5rem',
-        background: isActive ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.05)',
-        color: 'white',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '8px',
+        background: isActive ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.03)',
+        color: isActive ? 'white' : 'var(--color-text-secondary)',
+        border: '1px solid',
+        borderColor: isActive ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.08)',
+        borderRadius: '10px',
         cursor: 'pointer',
-        fontWeight: '500',
-        transition: 'all 0.2s',
-        backdropFilter: 'blur(10px)'
+        fontWeight: '600',
+        fontSize: '0.9rem',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)',
+        whiteSpace: 'nowrap'
     });
 
     const tableHeaderStyle = {
@@ -222,8 +225,8 @@ export default function AdminPage() {
             <h1 className="text-center mb-4 text-glow" style={{ color: 'white' }}>Admin Dashboard</h1>
 
             {/* Quick Actions */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                <button
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2.5rem' }}>
+                <motion.button
                     disabled={isScanning}
                     onClick={async () => {
                         setIsScanning(true);
@@ -237,27 +240,39 @@ export default function AdminPage() {
                             setIsScanning(false);
                         }
                     }}
-                    className="btn btn-primary"
+                    whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)' }}
+                    whileTap={{ scale: 0.98 }}
+                    className="btn"
                     style={{
-                        background: isScanning ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.2)',
-                        backdropFilter: 'blur(10px)',
-                        fontWeight: 'bold',
-                        border: '1px solid var(--color-primary)',
-                        padding: '0.75rem 1.5rem',
+                        background: isScanning ? 'rgba(99, 102, 241, 0.1)' : 'linear-gradient(135deg, var(--primary-color), #4f46e5)',
+                        border: 'none',
+                        padding: '1rem 2rem',
                         fontSize: '1rem',
                         color: 'white',
-                        boxShadow: isScanning ? 'none' : '0 0 15px rgba(99, 102, 241, 0.3)',
+                        fontWeight: '600',
+                        borderRadius: '12px',
+                        letterSpacing: '1px',
+                        boxShadow: isScanning ? 'none' : '0 4px 15px rgba(99, 102, 241, 0.3)',
                         opacity: isScanning ? 0.7 : 1,
-                        cursor: isScanning ? 'wait' : 'pointer'
+                        cursor: isScanning ? 'wait' : 'pointer',
+                        transition: 'all 0.3s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
                     }}
                 >
                     {isScanning ? (
                         <>
-                            <span className="loading mr-2"></span>
-                            SCANNING...
+                            <span className="loading"></span>
+                            SCANNING IN PROGRESS...
                         </>
-                    ) : 'TRIGGER AI SCAN'}
-                </button>
+                    ) : (
+                        <>
+                            <span className="material-icons">auto_awesome</span>
+                            TRIGGER AI SCAN
+                        </>
+                    )}
+                </motion.button>
             </div>
 
             {/* Tab Navigation */}
@@ -334,10 +349,10 @@ export default function AdminPage() {
                                         </p>
                                     </CardBody>
                                     <CardFooter>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                                            <button onClick={() => openModal(hackathon, 'hackathon')} className="btn btn-secondary" style={{ fontSize: '0.8rem' }}>View</button>
-                                            <button onClick={() => handleApprove('hackathon', hackathon.id)} className="btn btn-success" style={{ fontSize: '0.8rem' }}>Approve</button>
-                                            <button onClick={() => handleReject('hackathon', hackathon.id)} className="btn btn-danger" style={{ fontSize: '0.8rem' }}>Reject</button>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', width: '100%' }}>
+                                            <button onClick={() => openModal(hackathon, 'hackathon')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>View</button>
+                                            <button onClick={() => handleApprove('hackathon', hackathon.id)} className="btn btn-success" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>Approve</button>
+                                            <button onClick={() => handleReject('hackathon', hackathon.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>Reject</button>
                                         </div>
                                     </CardFooter>
                                 </Card>
@@ -361,10 +376,10 @@ export default function AdminPage() {
                                         </p>
                                     </CardBody>
                                     <CardFooter>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                                            <button onClick={() => openModal(internship, 'internship')} className="btn btn-secondary" style={{ fontSize: '0.8rem' }}>View</button>
-                                            <button onClick={() => handleApprove('internship', internship.id)} className="btn btn-success" style={{ fontSize: '0.8rem' }}>Approve</button>
-                                            <button onClick={() => handleReject('internship', internship.id)} className="btn btn-danger" style={{ fontSize: '0.8rem' }}>Reject</button>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', width: '100%' }}>
+                                            <button onClick={() => openModal(internship, 'internship')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>View</button>
+                                            <button onClick={() => handleApprove('internship', internship.id)} className="btn btn-success" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>Approve</button>
+                                            <button onClick={() => handleReject('internship', internship.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px' }}>Reject</button>
                                         </div>
                                     </CardFooter>
                                 </Card>
@@ -404,8 +419,8 @@ export default function AdminPage() {
                                             <td style={tableCellStyle}>{new Date(hackathon.created_at).toLocaleDateString()}</td>
                                             <td style={tableCellStyle}>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => openModal(hackathon, 'hackathon')} className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>View</button>
-                                                    <button onClick={() => handleDeleteOpportunity('hackathon', hackathon.id)} className="btn btn-danger" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>Delete</button>
+                                                    <button onClick={() => openModal(hackathon, 'hackathon')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>View</button>
+                                                    <button onClick={() => handleDeleteOpportunity('hackathon', hackathon.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>Delete</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -441,8 +456,8 @@ export default function AdminPage() {
                                             <td style={tableCellStyle}>{new Date(internship.created_at).toLocaleDateString()}</td>
                                             <td style={tableCellStyle}>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => openModal(internship, 'internship')} className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>View</button>
-                                                    <button onClick={() => handleDeleteOpportunity('internship', internship.id)} className="btn btn-danger" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>Delete</button>
+                                                    <button onClick={() => openModal(internship, 'internship')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>View</button>
+                                                    <button onClick={() => handleDeleteOpportunity('internship', internship.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>Delete</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -529,7 +544,7 @@ export default function AdminPage() {
                                                     <button
                                                         onClick={() => handleApproveHost(user.id)}
                                                         className="btn btn-success"
-                                                        style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                                                        style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', borderRadius: '8px' }}
                                                     >
                                                         Approve Host
                                                     </button>
