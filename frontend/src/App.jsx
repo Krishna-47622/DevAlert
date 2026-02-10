@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
-import DeveloperBackground from './components/canvas/DeveloperBackground';
+import LiquidEther from './components/ui/LiquidEther';
+// import DeveloperBackground from './components/canvas/DeveloperBackground';
 // import DistortedSphere from './components/canvas/DistortedSphere';
 import SmoothScroll from './components/SmoothScroll';
 import Cursor from './components/Cursor';
@@ -36,6 +37,10 @@ function PrivateRoute({ children, adminOnly = false }) {
 
   return children;
 }
+
+
+
+
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -118,7 +123,35 @@ function App() {
         <SmoothScroll>
           <div className="app">
             <Cursor />
-            <DeveloperBackground />
+            <div style={{
+              width: '100vw',
+              height: '100vh',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              zIndex: -1
+            }}>
+              <LiquidEther
+                colors={['#5227FF', '#FF9FFC', '#B19EEF']}
+                mouseForce={20}
+                cursorSize={100}
+                isViscous
+                viscous={10}
+                iterationsViscous={10}
+                iterationsPoisson={10}
+                resolution={0.2}
+                isBounce={false}
+                autoDemo
+                autoSpeed={0.5}
+                autoIntensity={2.2}
+                takeoverDuration={0.25}
+                autoResumeDelay={3000}
+                autoRampDuration={0.6}
+                color0="#5227FF"
+                color1="#FF9FFC"
+                color2="#B19EEF"
+              />
+            </div>
             <Navbar />
             <div className="main-content">
               <AnimatedRoutes />

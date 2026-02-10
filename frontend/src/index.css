@@ -10,11 +10,8 @@
   --secondary-color: #a1a1aa;
   --accent-color: #0ea5e9;
   /* Sky Blue */
-  --background-color: transparent;
-  /* Transparent for 3D background */
-
-  /* Mappings for legacy variables */
-  --color-bg-primary: transparent;
+  --background-color: #000000;
+  --color-bg-primary: #000000;
   --color-bg-secondary: rgba(10, 10, 10, 0.8);
   --color-bg-tertiary: #1a1a1a;
   --color-bg-card: rgba(15, 15, 15, 0.6);
@@ -98,12 +95,13 @@ html {
 
 .main-content {
   flex: 1;
+  padding-top: 120px;
+  /* Space for Dynamic Island Navbar */
 }
 
 body {
   font-family: var(--font-primary);
-  background-color: transparent;
-  /* Transparent for 3D background */
+  background-color: transparent !important;
   color: var(--color-text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -143,6 +141,7 @@ body {
   text-shadow: var(--primary-glow);
 }
 
+/* 
 .nav-link.active::after {
   content: '';
   position: absolute;
@@ -153,7 +152,8 @@ body {
   background-color: var(--primary-color);
   box-shadow: var(--primary-glow);
   border-radius: var(--radius-full);
-}
+} 
+*/
 
 /* Material Icons */
 .material-icons {
@@ -521,7 +521,8 @@ a:hover {
   color: var(--color-text-primary);
 }
 
-/* Mobile Navbar Styles */
+/* Mobile Navbar Styles - Deprecated for Dynamic Island */
+/*
 @media (max-width: 768px) {
   .navbar-nav {
     display: none !important;
@@ -546,6 +547,7 @@ a:hover {
     display: block !important;
   }
 }
+*/
 
 .mobile-menu-toggle {
   display: none;

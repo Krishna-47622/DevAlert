@@ -3,34 +3,51 @@ import { useNavigate } from 'react-router-dom';
 import { notificationsAPI } from '../services/api';
 import './NotificationsPopup.css';
 
-export default function NotificationsPopup({ isOpen, onClose }) {
+import { createPortal } from 'react-dom';
+
+export default function NotificationsPopup({ isOpen, onClose, anchorRef }) {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
     const popupRef = useRef(null);
     const navigate = useNavigate();
+    const [position, setPosition] = useState({ top: 0, right: 0, width: 380 });
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && anchorRef?.current) {
+            const rect = anchorRef.current.getBoundingClientRect();
+            // Position: below the anchor, right-aligned, with some gap
+            setPosition({
+                top: rect.bottom + 12,
+                left: rect.right - 380, // Right align manually
+            });
             fetchNotifications();
             markAllAsRead();
         }
-    }, [isOpen]);
+    }, [isOpen, anchorRef]);
 
     useEffect(() => {
         function handleClickOutside(event) {
-            if (popupRef.current && !popupRef.current.contains(event.target)) {
+            // Check if click is outside popup AND outside the anchor button
+            if (
+                popupRef.current &&
+                !popupRef.current.contains(event.target) &&
+                anchorRef.current &&
+                !anchorRef.current.contains(event.target)
+            ) {
                 onClose();
             }
         }
 
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
+            window.addEventListener('scroll', onClose); // Close on scroll to avoid detachment
         }
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('scroll', onClose);
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, anchorRef]);
 
     const fetchNotifications = async () => {
         setLoading(true);
@@ -78,8 +95,17 @@ export default function NotificationsPopup({ isOpen, onClose }) {
 
     if (!isOpen) return null;
 
-    return (
-        <div className="notifications-popup" ref={popupRef}>
+    return createPortal(
+        <div
+            className="notifications-popup"
+            ref={popupRef}
+            style={{
+                position: 'fixed',
+                top: position.top,
+                left: position.left,
+                margin: 0 // Override CSS margin
+            }}
+        >
             <div className="notifications-popup-header">
                 <h3>Notifications</h3>
             </div>
@@ -121,6 +147,7 @@ export default function NotificationsPopup({ isOpen, onClose }) {
                     View All Notifications
                 </button>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

@@ -1,92 +1,110 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, forwardRef } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 
-export default function Card({ children, className = '', tilt = true, ...props }) {
-    const cardRef = useRef(null);
+const springValues = {
+    damping: 30,
+    stiffness: 100,
+    mass: 2
+};
+
+const Card = forwardRef(({ children, className = '', tilt = true, ...props }, ref) => {
+    const internalRef = useRef(null);
+    const cardRef = ref || internalRef;
 
     // Motion values for tilt
     const x = useMotionValue(0);
     const y = useMotionValue(0);
+    const rotateX = useSpring(useMotionValue(0), springValues);
+    const rotateY = useSpring(useMotionValue(0), springValues);
+    const scale = useSpring(1, springValues);
+    const opacity = useSpring(0);
 
-    // Smooth springs for rotation
-    const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [10, -10]), { stiffness: 300, damping: 30 });
-    const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-10, 10]), { stiffness: 300, damping: 30 });
-
-    // Shine effect position
-    const shineX = useSpring(useTransform(x, [-0.5, 0.5], [0, 100]), { stiffness: 300, damping: 30 });
-    const shineY = useSpring(useTransform(y, [-0.5, 0.5], [0, 100]), { stiffness: 300, damping: 30 });
-
-    const [isHovered, setIsHovered] = useState(false);
-
-    const handleMouseMove = (e) => {
+    function handleMouse(e) {
         if (!cardRef.current || !tilt) return;
 
         const rect = cardRef.current.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left - rect.width / 2;
+        const offsetY = e.clientY - rect.top - rect.height / 2;
 
-        // Calculate normalized mouse position (-0.5 to 0.5)
-        const mouseX = (e.clientX - rect.left) / rect.width - 0.5;
-        const mouseY = (e.clientY - rect.top) / rect.height - 0.5;
+        const rotateAmplitude = 14;
+        const rotationX = (offsetY / (rect.height / 2)) * -rotateAmplitude;
+        const rotationY = (offsetX / (rect.width / 2)) * rotateAmplitude;
 
-        x.set(mouseX);
-        y.set(mouseY);
-    };
+        rotateX.set(rotationX);
+        rotateY.set(rotationY);
 
-    const handleMouseEnter = () => setIsHovered(true);
-    const handleMouseLeave = () => {
-        setIsHovered(false);
-        x.set(0);
-        y.set(0);
-    };
+        x.set(e.clientX - rect.left);
+        y.set(e.clientY - rect.top);
+    }
+
+    function handleMouseEnter() {
+        scale.set(1.05);
+        opacity.set(1);
+    }
+
+    function handleMouseLeave() {
+        opacity.set(0);
+        scale.set(1);
+        rotateX.set(0);
+        rotateY.set(0);
+    }
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            onMouseMove={handleMouseMove}
+        <div
+            ref={cardRef}
+            className={`card-wrapper ${className}`}
+            onMouseMove={handleMouse}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             style={{
-                perspective: 1000,
-                rotateX: tilt ? rotateX : 0,
-                rotateY: tilt ? rotateY : 0,
-                scale: isHovered ? 1.02 : 1,
-                zIndex: isHovered ? 10 : 1,
-                ...props.style
+                perspective: '800px',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                transformStyle: 'preserve-3d'
             }}
-            ref={cardRef}
-            className={`card ${className}`}
             {...props}
         >
-            {/* Glossy/Shine Overlay */}
-            {tilt && (
-                <motion.div
-                    style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: `radial-gradient(circle at ${isHovered ? 'var(--shine-x)' : '50%'} ${isHovered ? 'var(--shine-y)' : '50%'}, rgba(255,255,255,0.1) 0%, transparent 80%)`,
-                        opacity: isHovered ? 1 : 0,
-                        zIndex: 2,
-                        pointerEvents: 'none',
-                        borderRadius: 'inherit',
-                        '--shine-x': useTransform(shineX, s => `${s}%`),
-                        '--shine-y': useTransform(shineY, s => `${s}%`)
-                    }}
-                />
-            )}
+            <motion.div
+                className="card"
+                style={{
+                    rotateX: tilt ? rotateX : 0,
+                    rotateY: tilt ? rotateY : 0,
+                    scale: scale,
+                    transformStyle: 'preserve-3d',
+                    width: '100%',
+                    height: '100%',
+                    position: 'relative',
+                    transition: 'none', // Disable CSS transition for smooth framer-motion
+                    ...props.style // Apply style here so borders/shadows tilt
+                }}
+            >
+                {/* Glossy/Shine Overlay */}
+                {tilt && (
+                    <motion.div
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            background: 'radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(255,255,255,0.08), transparent 80%)',
+                            opacity: opacity,
+                            zIndex: 2,
+                            pointerEvents: 'none',
+                            borderRadius: 'inherit',
+                            '--mouse-x': useTransform(x, (val) => `${val}px`),
+                            '--mouse-y': useTransform(y, (val) => `${val}px`)
+                        }}
+                    />
+                )}
 
-            <div style={{ position: 'relative', zIndex: 1 }}>
-                {children}
-            </div>
-        </motion.div>
+                <div style={{ position: 'relative', zIndex: 1, transform: 'translateZ(20px)' }}>
+                    {children}
+                </div>
+            </motion.div>
+        </div>
     );
-}
-// Wait, if I replace the whole file, I lose the CardHeader/Body exports.
-// I must include them. And the wrap approach is safer for conflicts.
+});
+
+export default Card;
 
 export function CardHeader({ children, className = '' }) {
     return (

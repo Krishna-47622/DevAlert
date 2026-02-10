@@ -14,8 +14,8 @@ export default function HostEventPage() {
         company: '',
         location: '',
         mode: 'hybrid',
-        deadline: '',
-        start_date: '',
+        deadline: new Date().toISOString().split('T')[0], // Pre-fill with current date
+        start_date: new Date().toISOString().split('T')[0],
         end_date: '',
         prize_pool: '',
         stipend: '',

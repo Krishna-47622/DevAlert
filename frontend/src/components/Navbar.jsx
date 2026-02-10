@@ -1,15 +1,21 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { notificationsAPI } from '../services/api';
 import NotificationsPopup from './NotificationsPopup';
 import Magnetic from './Magnetic';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Navbar() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Dynamic Island State
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    // Ref for the notification button to anchor the portal
+    const notificationBtnRef = useRef(null);
 
     useEffect(() => {
         if (user) {
@@ -40,70 +46,246 @@ export default function Navbar() {
         setShowNotifications(!showNotifications);
     };
 
-    const toggleMobileMenu = () => {
-        setIsMobileMenuOpen(!isMobileMenuOpen);
-    };
-
     const navLinkClass = ({ isActive }) => isActive ? 'nav-link active' : 'nav-link';
 
+    const handleExpandToggle = (e) => {
+        // Prevent toggle if clicking interactive elements inside
+        if (e.target.closest('button') || e.target.closest('a')) return;
+
+        if (!isExpanded) {
+            setIsExpanded(true);
+        }
+    };
+
+    const handleArrowClick = (e) => {
+        e.stopPropagation();
+        if (isExpanded) {
+            setShowNotifications(false); // Close notifications when collapsing
+            setIsExpanded(false);
+        } else {
+            setIsExpanded(true);
+        }
+    };
+
     return (
-        <nav className="navbar" style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)' }}>
-            <div className="container">
-                <div className="navbar-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '64px' }}>
-                    <Link to="/" className="navbar-brand" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-primary)', textDecoration: 'none' }}>
-                        DevAlert
-                        <span style={{ color: 'var(--primary-color)' }}>.</span>
-                    </Link>
+        <motion.nav
+            className="navbar-dynamic-island"
+            layout
+            initial={false}
+            animate={{
+                width: isExpanded ? 'auto' : '170px',
+                height: 60, // Fixed height prevents vertical jitter
+                borderRadius: '50px'
+            }}
+            transition={{ type: "spring", stiffness: 500, damping: 30, mass: 0.8 }}
+            onClick={handleExpandToggle}
+            style={{
+                position: 'fixed',
+                top: '20px',
+                left: 0,
+                right: 0,
+                marginLeft: 'auto',
+                marginRight: 'auto',
+                zIndex: 1000,
+                maxWidth: '95vw',
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '0 20px', // Removed vertical padding, relying on flex alignment
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: isExpanded ? 'default' : 'pointer',
+                overflow: 'hidden' // Always hidden is fine now that Popup is a Portal
+            }}
+        >
+            {/* Logo Section - Always Visible */}
+            <motion.div layout="position" style={{ display: 'flex', alignItems: 'center', marginRight: isExpanded ? '40px' : '0', flexShrink: 0 }}>
+                <Link to="/" className="navbar-brand" style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+                    DevAlert
+                    <span style={{ color: 'var(--primary-color)' }}>.</span>
+                </Link>
+            </motion.div>
 
-                    {/* Mobile Menu Toggle */}
-                    <button className="mobile-menu-toggle" onClick={toggleMobileMenu}>
-                        <span className="material-icons">{isMobileMenuOpen ? 'close' : 'menu'}</span>
-                    </button>
-
-                    <ul className={`navbar-nav ${isMobileMenuOpen ? 'mobile-active' : ''}`} style={{ display: 'flex', gap: '2rem', listStyle: 'none', margin: 0, padding: 0, alignItems: 'center' }}>
-                        {user ? (
-                            <>
-                                <li>
-                                    <Magnetic><NavLink to="/" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)} end>Dashboard</NavLink></Magnetic>
-                                </li>
-                                <li>
-                                    <Magnetic><NavLink to="/about" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>About Us</NavLink></Magnetic>
-                                </li>
-                                {user.role === 'admin' && (
+            {/* Navigation Links - Hidden when collapsed */}
+            <AnimatePresence mode="popLayout">
+                {isExpanded && (
+                    <motion.div
+                        initial={{ opacity: 0, width: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, width: 'auto', scale: 1 }}
+                        exit={{ opacity: 0, width: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '2rem', overflow: 'hidden', whiteSpace: 'nowrap', height: '100%' }}
+                    >
+                        <ul className="navbar-nav" style={{ display: 'flex', gap: '1.5rem', listStyle: 'none', margin: 0, padding: 0, alignItems: 'center', whiteSpace: 'nowrap' }}>
+                            {user ? (
+                                <>
                                     <li>
-                                        <Magnetic><NavLink to="/admin" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Admin</NavLink></Magnetic>
+                                        <NavLink to="/" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                            {({ isActive }) => (
+                                                <>
+                                                    <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Dashboard</span>
+                                                    {isActive && (
+                                                        <motion.div
+                                                            layoutId="navbar-pill"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                inset: 0,
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                borderRadius: '20px',
+                                                                zIndex: 1
+                                                            }}
+                                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                        />
+                                                    )}
+                                                </>
+                                            )}
+                                        </NavLink>
                                     </li>
-                                )}
-                                {(user.role === 'hoster' || user.role === 'admin') && (
-                                    <>
+                                    <li>
+                                        <NavLink to="/about" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                            {({ isActive }) => (
+                                                <>
+                                                    <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>About</span>
+                                                    {isActive && (
+                                                        <motion.div
+                                                            layoutId="navbar-pill"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                inset: 0,
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                borderRadius: '20px',
+                                                                zIndex: 1
+                                                            }}
+                                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                        />
+                                                    )}
+                                                </>
+                                            )}
+                                        </NavLink>
+                                    </li>
+                                    {user.role === 'admin' && (
                                         <li>
-                                            <Magnetic><NavLink to="/host-event" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Host Event</NavLink></Magnetic>
+                                            <NavLink to="/admin" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                                {({ isActive }) => (
+                                                    <>
+                                                        <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Admin</span>
+                                                        {isActive && (
+                                                            <motion.div
+                                                                layoutId="navbar-pill"
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    inset: 0,
+                                                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                    borderRadius: '20px',
+                                                                    zIndex: 1
+                                                                }}
+                                                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                            />
+                                                        )}
+                                                    </>
+                                                )}
+                                            </NavLink>
                                         </li>
-                                        <li>
-                                            <Magnetic><NavLink to="/applicants" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Applicants</NavLink></Magnetic>
-                                        </li>
-                                    </>
-                                )}
-                                <li>
-                                    <Magnetic><NavLink to="/applicant" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Opportunities</NavLink></Magnetic>
-                                </li>
-                                <li>
-                                    <Magnetic><NavLink to="/settings" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Settings</NavLink></Magnetic>
-                                </li>
-                                <li style={{ position: 'relative' }}>
-                                    <Magnetic>
+                                    )}
+                                    {(user.role === 'hoster' || user.role === 'admin') && (
+                                        <>
+                                            <li>
+                                                <NavLink to="/host-event" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                                    {({ isActive }) => (
+                                                        <>
+                                                            <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Host</span>
+                                                            {isActive && (
+                                                                <motion.div
+                                                                    layoutId="navbar-pill"
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        inset: 0,
+                                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                        borderRadius: '20px',
+                                                                        zIndex: 1
+                                                                    }}
+                                                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                                />
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </NavLink>
+                                            </li>
+                                            <li>
+                                                <NavLink to="/applicants" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                                    {({ isActive }) => (
+                                                        <>
+                                                            <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Applicants</span>
+                                                            {isActive && (
+                                                                <motion.div
+                                                                    layoutId="navbar-pill"
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        inset: 0,
+                                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                        borderRadius: '20px',
+                                                                        zIndex: 1
+                                                                    }}
+                                                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                                />
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </NavLink>
+                                            </li>
+                                        </>
+                                    )}
+                                    <li>
+                                        <NavLink to="/applicant" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                            {({ isActive }) => (
+                                                <>
+                                                    <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Opportunities</span>
+                                                    {isActive && (
+                                                        <motion.div
+                                                            layoutId="navbar-pill"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                inset: 0,
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                borderRadius: '20px',
+                                                                zIndex: 1
+                                                            }}
+                                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                        />
+                                                    )}
+                                                </>
+                                            )}
+                                        </NavLink>
+                                    </li>
+                                    <li>
+                                        <NavLink to="/settings" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                            {({ isActive }) => (
+                                                <>
+                                                    <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Settings</span>
+                                                    {isActive && (
+                                                        <motion.div
+                                                            layoutId="navbar-pill"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                inset: 0,
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                borderRadius: '20px',
+                                                                zIndex: 1
+                                                            }}
+                                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                        />
+                                                    )}
+                                                </>
+                                            )}
+                                        </NavLink>
+                                    </li>
+                                    <li style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                         <button
+                                            ref={notificationBtnRef}
                                             onClick={toggleNotifications}
                                             className="nav-link"
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                padding: '0.5rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                color: showNotifications ? 'var(--primary-color)' : 'inherit'
-                                            }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: showNotifications ? 'var(--primary-color)' : 'inherit', padding: '5px', position: 'relative' }}
                                         >
                                             <span className="material-icons">notifications</span>
                                             {unreadCount > 0 && (
@@ -114,51 +296,83 @@ export default function Navbar() {
                                                     backgroundColor: 'var(--danger-color)',
                                                     color: 'white',
                                                     borderRadius: '50%',
-                                                    width: '18px',
-                                                    height: '18px',
+                                                    minWidth: '16px',
+                                                    height: '16px',
                                                     fontSize: '10px',
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    justifyContent: 'center'
+                                                    justifyContent: 'center',
+                                                    padding: '0 4px',
+                                                    zIndex: 10
                                                 }}>{unreadCount}</span>
                                             )}
                                         </button>
-                                    </Magnetic>
-                                    <NotificationsPopup
-                                        isOpen={showNotifications}
-                                        onClose={() => setShowNotifications(false)}
-                                    />
-                                </li>
+                                        <NotificationsPopup
+                                            isOpen={showNotifications}
+                                            onClose={() => setShowNotifications(false)}
+                                            anchorRef={notificationBtnRef}
+                                        />
+                                    </li>
+                                    <li>
+                                        <button onClick={handleLogout} className="btn" style={{ padding: '0.4rem 0.8rem', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: '20px', cursor: 'pointer' }}>
+                                            Logout
+                                        </button>
+                                    </li>
+                                </>
+                            ) : (
                                 <li>
-                                    <button onClick={handleLogout} className="btn" style={{
-                                        padding: '0.5rem 1rem',
-                                        backgroundColor: 'var(--surface-color)',
-                                        border: '1px solid var(--border-color)',
-                                        color: 'var(--text-secondary)',
-                                        transition: 'all 0.2s',
-                                        cursor: 'pointer'
-                                    }}
-                                        onMouseOver={(e) => {
-                                            e.currentTarget.style.borderColor = 'var(--danger-color)';
-                                            e.currentTarget.style.color = 'var(--danger-color)';
-                                        }}
-                                        onMouseOut={(e) => {
-                                            e.currentTarget.style.borderColor = 'var(--border-color)';
-                                            e.currentTarget.style.color = 'var(--text-secondary)';
-                                        }}
-                                    >
-                                        Logout
-                                    </button>
+                                    <NavLink to="/login" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                        {({ isActive }) => (
+                                            <>
+                                                <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Login</span>
+                                                {isActive && (
+                                                    <motion.div
+                                                        layoutId="navbar-pill"
+                                                        style={{
+                                                            position: 'absolute',
+                                                            inset: 0,
+                                                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                            borderRadius: '20px',
+                                                            zIndex: 1
+                                                        }}
+                                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                    />
+                                                )}
+                                            </>
+                                        )}
+                                    </NavLink>
                                 </li>
-                            </>
-                        ) : (
-                            <li>
-                                <NavLink to="/login" className={navLinkClass} onClick={() => setIsMobileMenuOpen(false)}>Login</NavLink>
-                            </li>
-                        )}
-                    </ul>
-                </div>
-            </div>
-        </nav>
+                            )}
+                        </ul>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Toggle Arrow - Always Visible */}
+            <motion.button
+                layout="position"
+                onClick={handleArrowClick}
+                style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'white',
+                    marginLeft: '10px',
+                    flexShrink: 0
+                }}
+                animate={{ rotate: isExpanded ? 180 : 0 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+                <span className="material-icons">arrow_forward_ios</span>
+            </motion.button>
+        </motion.nav>
     );
 }
