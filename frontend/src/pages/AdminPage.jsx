@@ -3,6 +3,7 @@ import { adminAPI, hackathonsAPI, internshipsAPI } from '../services/api';
 import Card, { CardHeader, CardBody, CardFooter } from '../components/Card';
 import Modal from '../components/Modal';
 import Popup from '../components/Popup';
+import { motion } from 'framer-motion';
 
 export default function AdminPage() {
     const [pending, setPending] = useState({ hackathons: [], internships: [] });

@@ -73,11 +73,17 @@ export default function Navbar() {
             layout
             initial={false}
             animate={{
-                width: isExpanded ? 'auto' : '170px',
-                height: 60, // Fixed height prevents vertical jitter
-                borderRadius: '50px'
+                width: isExpanded ? 'auto' : '180px',
+                height: 60,
+                borderRadius: '30px'
             }}
-            transition={{ type: "spring", stiffness: 500, damping: 30, mass: 0.8 }}
+            transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 30,
+                mass: 1,
+                layout: { duration: 0.3 }
+            }}
             onClick={handleExpandToggle}
             style={{
                 position: 'fixed',
@@ -100,7 +106,7 @@ export default function Navbar() {
             }}
         >
             {/* Logo Section - Always Visible */}
-            <motion.div layout="position" style={{ display: 'flex', alignItems: 'center', marginRight: isExpanded ? '40px' : '0', flexShrink: 0 }}>
+            <motion.div layout="position" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                 <Link to="/" className="navbar-brand" style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
                     DevAlert
                     <span style={{ color: 'var(--primary-color)' }}>.</span>
@@ -398,13 +404,13 @@ export default function Navbar() {
                     justifyContent: 'center',
                     cursor: 'pointer',
                     color: 'white',
-                    marginLeft: '10px',
+                    marginLeft: '15px',
                     flexShrink: 0
                 }}
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                animate={{ rotate: isExpanded ? 0 : 180 }}
+                whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.15)' }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
                 <span className="material-icons">keyboard_arrow_left</span>
             </motion.button>
