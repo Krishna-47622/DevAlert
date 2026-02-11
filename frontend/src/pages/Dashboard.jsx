@@ -116,6 +116,7 @@ export default function Dashboard() {
                             key={hackathon.id}
                             onClick={() => handleCardClick('hackathon', hackathon.id)}
                             style={{ cursor: 'pointer' }}
+                            role="button"
                         >
                             <CardHeader>{hackathon.title}</CardHeader>
                             <CardBody>
@@ -139,6 +140,7 @@ export default function Dashboard() {
                             key={internship.id}
                             onClick={() => handleCardClick('internship', internship.id)}
                             style={{ cursor: 'pointer' }}
+                            role="button"
                         >
                             <CardHeader>{internship.title}</CardHeader>
                             <CardBody>

@@ -1,6 +1,48 @@
-import { forwardRef } from 'react';
+import { useRef, useState } from 'react';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
 
-const Card = forwardRef(({ children, className = '', tilt = true, ...props }, ref) => {
+const springValues = {
+    damping: 30,
+    stiffness: 100,
+    mass: 2
+};
+
+const Card = ({ children, className = '', containerHeight = 'auto', containerWidth = '100%', rotateAmplitude = 12, scaleOnHover = 1.05, ...props }) => {
+    const ref = useRef(null);
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+    const rotateX = useSpring(useMotionValue(0), springValues);
+    const rotateY = useSpring(useMotionValue(0), springValues);
+    const scale = useSpring(1, springValues);
+    const opacity = useSpring(0);
+
+    function handleMouse(e) {
+        if (!ref.current) return;
+        const rect = ref.current.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left - rect.width / 2;
+        const offsetY = e.clientY - rect.top - rect.height / 2;
+
+        const rotationX = (offsetY / (rect.height / 2)) * -rotateAmplitude;
+        const rotationY = (offsetX / (rect.width / 2)) * rotateAmplitude;
+
+        rotateX.set(rotationX);
+        rotateY.set(rotationY);
+        x.set(e.clientX - rect.left);
+        y.set(e.clientY - rect.top);
+    }
+
+    function handleMouseEnter() {
+        scale.set(scaleOnHover);
+        opacity.set(1);
+    }
+
+    function handleMouseLeave() {
+        opacity.set(0);
+        scale.set(1);
+        rotateX.set(0);
+        rotateY.set(0);
+    }
+
     return (
         <div
             ref={ref}
@@ -9,12 +51,17 @@ const Card = forwardRef(({ children, className = '', tilt = true, ...props }, re
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
-                width: '100%',
+                width: containerWidth,
+                height: containerHeight,
+                perspective: '1000px',
                 ...props.style
             }}
+            onMouseMove={handleMouse}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             {...props}
         >
-            <div
+            <motion.div
                 className="card"
                 style={{
                     width: '100%',
@@ -26,7 +73,11 @@ const Card = forwardRef(({ children, className = '', tilt = true, ...props }, re
                     display: 'flex',
                     flexDirection: 'column',
                     padding: '1.5rem',
-                    borderRadius: '12px'
+                    borderRadius: '12px',
+                    transformStyle: 'preserve-3d',
+                    rotateX,
+                    rotateY,
+                    scale
                 }}
             >
                 <div style={{
@@ -34,14 +85,16 @@ const Card = forwardRef(({ children, className = '', tilt = true, ...props }, re
                     zIndex: 1,
                     flex: 1,
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    transform: 'translateZ(20px)',
+                    transformStyle: 'preserve-3d'
                 }}>
                     {children}
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
-});
+};
 
 export default Card;
 

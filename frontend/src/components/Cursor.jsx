@@ -20,7 +20,17 @@ function CursorMesh() {
         };
 
         const handleMouseOver = (e) => {
-            if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('a') || e.target.closest('button') || e.target.getAttribute('role') === 'button') {
+            const target = e.target;
+            const isInteractable =
+                target.tagName === 'A' ||
+                target.tagName === 'BUTTON' ||
+                target.closest('a') ||
+                target.closest('button') ||
+                target.getAttribute('role') === 'button' ||
+                target.closest('.card-wrapper') ||
+                target.closest('.card');
+
+            if (isInteractable) {
                 setHovered(true);
             } else {
                 setHovered(false);
