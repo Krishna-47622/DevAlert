@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
 
 const springValues = {
@@ -7,18 +7,28 @@ const springValues = {
     mass: 2
 };
 
-const Card = ({ children, className = '', containerHeight = 'auto', containerWidth = '100%', rotateAmplitude = 12, scaleOnHover = 1.05, ...props }) => {
-    const ref = useRef(null);
+const Card = forwardRef(({
+    children,
+    className = '',
+    containerHeight = 'auto',
+    containerWidth = '100%',
+    rotateAmplitude = 12,
+    scaleOnHover = 1.05,
+    style: externalStyle = {},
+    ...props
+}, ref) => {
+    const internalRef = useRef(null);
+    useImperativeHandle(ref, () => internalRef.current);
+
     const x = useMotionValue(0);
     const y = useMotionValue(0);
     const rotateX = useSpring(useMotionValue(0), springValues);
     const rotateY = useSpring(useMotionValue(0), springValues);
     const scale = useSpring(1, springValues);
-    const opacity = useSpring(0);
 
     function handleMouse(e) {
-        if (!ref.current) return;
-        const rect = ref.current.getBoundingClientRect();
+        if (!internalRef.current) return;
+        const rect = internalRef.current.getBoundingClientRect();
         const offsetX = e.clientX - rect.left - rect.width / 2;
         const offsetY = e.clientY - rect.top - rect.height / 2;
 
@@ -33,20 +43,21 @@ const Card = ({ children, className = '', containerHeight = 'auto', containerWid
 
     function handleMouseEnter() {
         scale.set(scaleOnHover);
-        opacity.set(1);
     }
 
     function handleMouseLeave() {
-        opacity.set(0);
         scale.set(1);
         rotateX.set(0);
         rotateY.set(0);
     }
 
     return (
-        <div
-            ref={ref}
-            className={`card-wrapper ${className}`}
+        <motion.div
+            ref={internalRef}
+            className={`card ${className}`}
+            onMouseMove={handleMouse}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -54,47 +65,31 @@ const Card = ({ children, className = '', containerHeight = 'auto', containerWid
                 width: containerWidth,
                 height: containerHeight,
                 perspective: '1000px',
-                ...props.style
+                transformStyle: 'preserve-3d',
+                rotateX,
+                rotateY,
+                scale,
+                transition: 'none', // Disable CSS transition to avoid conflict with framer-motion
+                cursor: props.onClick ? 'pointer' : 'default',
+                ...externalStyle
             }}
-            onMouseMove={handleMouse}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
             {...props}
         >
-            <motion.div
-                className="card"
-                style={{
-                    width: '100%',
-                    height: '100%',
-                    position: 'relative',
-                    backgroundColor: 'rgba(15, 15, 15, 0.4)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    padding: '1.5rem',
-                    borderRadius: '12px',
-                    transformStyle: 'preserve-3d',
-                    rotateX,
-                    rotateY,
-                    scale
-                }}
-            >
-                <div style={{
-                    position: 'relative',
-                    zIndex: 1,
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    transform: 'translateZ(20px)',
-                    transformStyle: 'preserve-3d'
-                }}>
-                    {children}
-                </div>
-            </motion.div>
-        </div>
+            <div style={{
+                position: 'relative',
+                zIndex: 1,
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                transform: 'translateZ(10px)',
+                transformStyle: 'preserve-3d',
+                pointerEvents: 'auto'
+            }}>
+                {children}
+            </div>
+        </motion.div>
     );
-};
+});
 
 export default Card;
 
