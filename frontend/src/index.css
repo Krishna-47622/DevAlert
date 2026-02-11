@@ -342,8 +342,8 @@ a:hover {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  /* transition removed to prevent fighting with framer-motion */
 }
 
 .card:hover {

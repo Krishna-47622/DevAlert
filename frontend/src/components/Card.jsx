@@ -17,77 +17,65 @@ const Card = forwardRef(({
     style: externalStyle = {},
     ...props
 }, ref) => {
-    const containerRef = useRef(null);
-    useImperativeHandle(ref, () => containerRef.current);
+    const internalRef = useRef(null);
+    useImperativeHandle(ref, () => internalRef.current);
 
     const rotateX = useSpring(0, springValues);
     const rotateY = useSpring(0, springValues);
     const scale = useSpring(1, springValues);
 
-    const handleMouseMove = (e) => {
-        if (!containerRef.current) return;
-        const rect = containerRef.current.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        const xPct = (mouseX / rect.width - 0.5) * 2;
-        const yPct = (mouseY / rect.height - 0.5) * 2;
-
-        rotateX.set(-yPct * rotateAmplitude);
-        rotateY.set(xPct * rotateAmplitude);
+    const onMouseMove = (e) => {
+        if (!internalRef.current) return;
+        const rect = internalRef.current.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        rotateX.set((y - 0.5) * -rotateAmplitude);
+        rotateY.set((x - 0.5) * rotateAmplitude);
     };
 
-    const handleMouseEnter = () => scale.set(scaleOnHover);
-    const handleMouseLeave = () => {
+    const onMouseEnter = () => scale.set(scaleOnHover);
+    const onMouseLeave = () => {
         rotateX.set(0);
         rotateY.set(0);
         scale.set(1);
     };
 
     return (
-        <div
-            ref={containerRef}
-            className={`card-wrapper ${className}`}
-            onMouseMove={handleMouseMove}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
+        <motion.div
+            ref={internalRef}
+            className={`card ${className}`}
+            onMouseMove={onMouseMove}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
             style={{
                 width: containerWidth,
                 height: containerHeight,
-                perspective: '1000px',
+                transformPerspective: 1000,
+                transformStyle: 'preserve-3d',
+                rotateX,
+                rotateY,
+                scale,
+                transition: 'none !important',
                 position: 'relative',
-                display: 'flex',
+                zIndex: 1,
                 cursor: props.onClick ? 'pointer' : 'default',
                 ...externalStyle
             }}
+            {...props}
         >
-            <motion.div
-                className="card-3d-base"
-                style={{
-                    width: '100%',
-                    height: '100%',
-                    rotateX,
-                    rotateY,
-                    scale,
-                    transformStyle: 'preserve-3d',
-                    pointerEvents: 'auto'
-                }}
-                {...props}
-            >
-                <div style={{
-                    position: 'relative',
-                    zIndex: 1,
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    transform: 'translateZ(10px)',
-                    transformStyle: 'preserve-3d',
-                    pointerEvents: 'auto'
-                }}>
-                    {children}
-                </div>
-            </motion.div>
-        </div>
+            <div style={{
+                position: 'relative',
+                zIndex: 2,
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                transform: 'translateZ(10px)',
+                transformStyle: 'preserve-3d',
+                pointerEvents: 'auto'
+            }}>
+                {children}
+            </div>
+        </motion.div>
     );
 });
 
