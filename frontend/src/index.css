@@ -351,6 +351,17 @@ a:hover {
   border-color: var(--color-border-light);
 }
 
+.card-3d-base {
+  background-color: rgba(15, 15, 15, 0.4) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  transition: none !important;
+}
+
 .card-header {
   font-size: 1.125rem;
   font-weight: 600;
