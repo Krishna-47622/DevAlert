@@ -35,7 +35,7 @@ export default function Dashboard() {
     };
 
     const handleCardClick = (type, id) => {
-        navigate(`/applicant?type=${type}&id=${id}`);
+        navigate(`/opportunities?type=${type}&id=${id}`);
     };
 
     if (loading) {

@@ -19,7 +19,7 @@ export default function Footer() {
                         <div className="footer-group">
                             <h4>Platform</h4>
                             <Link to="/">Dashboard</Link>
-                            <Link to="/applicant">Opportunities</Link>
+                            <Link to="/opportunities">Opportunities</Link>
                             <Link to="/about">About Us</Link>
                         </div>
                         <div className="footer-group">

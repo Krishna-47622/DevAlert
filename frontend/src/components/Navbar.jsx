@@ -260,7 +260,7 @@ export default function Navbar() {
                                         </>
                                     )}
                                     <li>
-                                        <NavLink to="/applicant" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                        <NavLink to="/opportunities" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
                                             {({ isActive }) => (
                                                 <>
                                                     <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Opportunities</span>

@@ -70,7 +70,7 @@ function AnimatedRoutes() {
           }
         />
         <Route
-          path="/applicant"
+          path="/opportunities"
           element={
             <PrivateRoute>
               <PageTransition><ApplicantPage /></PageTransition>
