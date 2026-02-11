@@ -475,6 +475,91 @@ def test_email_config():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+@admin_bp.route('/bulk-action', methods=['POST'])
+@jwt_required()
+def bulk_action():
+    """Perform bulk actions on hackathons or internships (admin only)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+            
+        data = request.get_json()
+        item_type = data.get('type') # 'hackathon' or 'internship'
+        ids = data.get('ids', [])
+        action = data.get('action') # 'approve', 'reject', 'delete'
+        
+        if not item_type or not ids or not action:
+            return jsonify({'error': 'Missing required fields'}), 400
+            
+        Model = Hackathon if item_type == 'hackathon' else Internship
+        
+        count = 0
+        
+        if action == 'delete':
+            # Bulk Delete
+            items = Model.query.filter(Model.id.in_(ids)).all()
+            for item in items:
+                db.session.delete(item)
+                count += 1
+        elif action in ['approve', 'reject']:
+            # Bulk Update Status
+            # We use synchronize_session=False for bulk updates where we don't need immediate object refresh
+            status = 'approved' if action == 'approve' else 'rejected'
+            count = Model.query.filter(Model.id.in_(ids)).update({Model.status: status}, synchronize_session=False)
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
+            
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Successfully {action}d {count} {item_type}s',
+            'count': count
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/purge-all', methods=['DELETE'])
+@jwt_required()
+def purge_all():
+    """Delete ALL opportunities of a specific type (admin only)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+            
+        item_type = request.args.get('type') # 'hackathon', 'internship', or 'all'
+        
+        if not item_type:
+             return jsonify({'error': 'Missing type parameter'}), 400
+             
+        deleted_counts = {}
+        
+        if item_type == 'hackathon' or item_type == 'all':
+            count = Hackathon.query.delete()
+            deleted_counts['hackathons'] = count
+            
+        if item_type == 'internship' or item_type == 'all':
+            count = Internship.query.delete()
+            deleted_counts['internships'] = count
+            
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Purge completed successfully',
+            'deleted': deleted_counts
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 @admin_bp.route('/seed-db', methods=['GET'])
 def seed_database():
     """Seed the database SAFELY (only adds missing initial data)"""

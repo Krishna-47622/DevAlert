@@ -5,7 +5,7 @@ import NotificationsPopup from './NotificationsPopup';
 import Magnetic from './Magnetic';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function Navbar({ theme, toggleTheme }) {
+export default function Navbar() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     const [unreadCount, setUnreadCount] = useState(0);
@@ -303,34 +303,7 @@ export default function Navbar({ theme, toggleTheme }) {
                                             )}
                                         </NavLink>
                                     </li>
-                                    <li style={{ display: 'flex', alignItems: 'center' }}>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleTheme();
-                                            }}
-                                            className="nav-link"
-                                            style={{
-                                                background: 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                padding: '8px',
-                                                borderRadius: '50%',
-                                                color: theme === 'dark' ? '#fbbf24' : '#6366f1', // Amber for sun, Indigo for moon
-                                                transition: 'all 0.3s ease',
-                                                width: '36px',
-                                                height: '36px'
-                                            }}
-                                            title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                                        >
-                                            <span className="material-icons" style={{ fontSize: '20px' }}>
-                                                {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-                                            </span>
-                                        </button>
-                                    </li>
+
                                     <li style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                         <button
                                             ref={notificationBtnRef}

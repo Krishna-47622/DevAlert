@@ -91,7 +91,9 @@ export const adminAPI = {
     updateUserRole: (userId, role) => api.put(`/admin/users/${userId}/role`, { role }),
     deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
     getHostRequests: () => api.get('/admin/host-requests'),
-    approveHost: (userId) => api.post(`/admin/approve-host/${userId}`)
+    approveHost: (userId) => api.post(`/admin/approve-host/${userId}`),
+    bulkAction: (data) => api.post('/admin/bulk-action', data),
+    purgeAll: (type) => api.delete(`/admin/purge-all?type=${type}`)
 };
 
 // Applications API

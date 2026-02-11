@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import Popup from '../components/Popup';
+import { motion } from 'framer-motion';
 
 export default function AccountSettings() {
     const [user, setUser] = useState(null);
@@ -24,6 +26,29 @@ export default function AccountSettings() {
     // Email verification state
     const [emailVerificationLoading, setEmailVerificationLoading] = useState(false);
     const [emailVerificationMessage, setEmailVerificationMessage] = useState({ type: '', text: '' });
+
+    // Popup State
+    const [popup, setPopup] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info', // success, error, warning, confirm
+        onConfirm: () => { }
+    });
+
+    const showPopup = (title, message, type = 'info', onConfirm = () => { }) => {
+        setPopup({
+            isOpen: true,
+            title,
+            message,
+            type,
+            onConfirm
+        });
+    };
+
+    const closePopup = () => {
+        setPopup(prev => ({ ...prev, isOpen: false }));
+    };
 
     useEffect(() => {
         fetchUser();
@@ -140,6 +165,14 @@ export default function AccountSettings() {
 
     return (
         <div className="container" style={{ paddingTop: '6rem' }}>
+            <Popup
+                isOpen={popup.isOpen}
+                onClose={closePopup}
+                title={popup.title}
+                message={popup.message}
+                type={popup.type}
+                onConfirm={popup.onConfirm}
+            />
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <h1 style={{ marginBottom: '2rem' }}>Account Settings</h1>
 
@@ -189,11 +222,11 @@ export default function AccountSettings() {
                                             onClick={async () => {
                                                 try {
                                                     await authAPI.updateProfile({ display_name: user.display_name });
-                                                    alert('Display name updated successfully!');
+                                                    showPopup('Success', 'Display name updated successfully!', 'success');
                                                     // Update local storage
                                                     localStorage.setItem('user', JSON.stringify(user));
                                                 } catch (err) {
-                                                    alert(err.response?.data?.error || 'Failed to update display name');
+                                                    showPopup('Error', err.response?.data?.error || 'Failed to update display name', 'error');
                                                 }
                                             }}
                                         >
@@ -221,11 +254,11 @@ export default function AccountSettings() {
                                             onClick={async () => {
                                                 try {
                                                     await authAPI.updateProfile({ full_name: user.full_name });
-                                                    alert('Name updated successfully!');
+                                                    showPopup('Success', 'Name updated successfully!', 'success');
                                                     // Update local storage
                                                     localStorage.setItem('user', JSON.stringify(user));
                                                 } catch (err) {
-                                                    alert(err.response?.data?.error || 'Failed to update name');
+                                                    showPopup('Error', err.response?.data?.error || 'Failed to update name', 'error');
                                                 }
                                             }}
                                         >
@@ -237,67 +270,7 @@ export default function AccountSettings() {
                                     </p>
                                 </div>
 
-                                {/* Theme Preference */}
-                                <div>
-                                    <label className="form-label">Theme Preference</label>
-                                    <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
-                                        <button
-                                            onClick={async () => {
-                                                const newTheme = 'light';
-                                                setUser({ ...user, theme_preference: newTheme });
-                                                document.documentElement.setAttribute('data-theme', newTheme);
-                                                try {
-                                                    await authAPI.updateProfile({ theme_preference: newTheme });
-                                                    localStorage.setItem('user', JSON.stringify({ ...user, theme_preference: newTheme }));
-                                                } catch (e) { console.error(e); }
-                                            }}
-                                            style={{
-                                                background: user?.theme_preference === 'light' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                                                border: `2px solid ${user?.theme_preference === 'light' ? '#6366f1' : 'var(--color-border)'}`,
-                                                borderRadius: '12px',
-                                                padding: '1.5rem',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                width: '120px',
-                                                transition: 'all 0.3s ease'
-                                            }}
-                                        >
-                                            <span className="material-icons" style={{ fontSize: '32px', color: '#fbbf24' }}>light_mode</span>
-                                            <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>Light</span>
-                                        </button>
 
-                                        <button
-                                            onClick={async () => {
-                                                const newTheme = 'dark';
-                                                setUser({ ...user, theme_preference: newTheme });
-                                                document.documentElement.setAttribute('data-theme', newTheme);
-                                                try {
-                                                    await authAPI.updateProfile({ theme_preference: newTheme });
-                                                    localStorage.setItem('user', JSON.stringify({ ...user, theme_preference: newTheme }));
-                                                } catch (e) { console.error(e); }
-                                            }}
-                                            style={{
-                                                background: !user?.theme_preference || user?.theme_preference === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                                                border: `2px solid ${!user?.theme_preference || user?.theme_preference === 'dark' ? '#6366f1' : 'var(--color-border)'}`,
-                                                borderRadius: '12px',
-                                                padding: '1.5rem',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                width: '120px',
-                                                transition: 'all 0.3s ease'
-                                            }}
-                                        >
-                                            <span className="material-icons" style={{ fontSize: '32px', color: '#818cf8' }}>dark_mode</span>
-                                            <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>Dark</span>
-                                        </button>
-                                    </div>
-                                </div>
 
                                 <div>
                                     <label className="form-label">Email</label>

@@ -26,10 +26,10 @@ export default function Dashboard() {
                 setStats(statsResponse.data);
             }
 
-            const hackathonsResponse = await hackathonsAPI.getAll({ status: 'approved' });
+            const hackathonsResponse = await hackathonsAPI.getAll({ status: 'approved', sort_by: 'created_at', order: 'desc' });
             setRecentHackathons(hackathonsResponse.data.slice(0, 3));
 
-            const internshipsResponse = await internshipsAPI.getAll({ status: 'approved' });
+            const internshipsResponse = await internshipsAPI.getAll({ status: 'approved', sort_by: 'created_at', order: 'desc' });
             setRecentInternships(internshipsResponse.data.slice(0, 3));
         } catch (error) {
             console.error('Error fetching data:', error);

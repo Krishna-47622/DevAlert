@@ -27,8 +27,21 @@ def get_internships():
         if company:
             query = query.filter(Internship.company.ilike(f'%{company}%'))
         
-        # Order by deadline
-        internships = query.order_by(Internship.deadline.asc()).all()
+        # Sorting
+        sort_by = request.args.get('sort_by', 'deadline')
+        order = request.args.get('order', 'asc')
+        
+        if sort_by == 'created_at':
+            sort_attr = Internship.created_at
+        else:
+            sort_attr = Internship.deadline
+            
+        if order == 'desc':
+            query = query.order_by(sort_attr.desc())
+        else:
+            query = query.order_by(sort_attr.asc())
+        
+        internships = query.all()
         
         return jsonify([i.to_dict() for i in internships]), 200
         

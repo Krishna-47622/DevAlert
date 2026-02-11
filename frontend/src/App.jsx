@@ -123,40 +123,11 @@ function AnimatedRoutes() {
 }
 
 function App() {
-  const [theme, setTheme] = useState('dark');
-
   useEffect(() => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || 'null');
-      let savedTheme = 'dark';
-      if (user?.theme_preference) {
-        savedTheme = user.theme_preference;
-      } else if (localStorage.getItem('theme')) {
-        savedTheme = localStorage.getItem('theme');
-      }
-
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    } catch (e) {
-      console.error("Theme initialization error:", e);
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
+    // Force dark mode
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
   }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-
-    // Update user preference if logged in
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (user) {
-      user.theme_preference = newTheme;
-      localStorage.setItem('user', JSON.stringify(user));
-      // Optional: Persist to backend
-    }
-  };
 
   return (
     <Router>
@@ -171,9 +142,7 @@ function App() {
           zIndex: -1
         }}>
           <LiquidEther
-            colors={theme === 'dark'
-              ? ['#5227FF', '#FF9FFC', '#B19EEF']  // Dark mode colors
-              : ['#6366f1', '#a855f7', '#ec4899']} // Light mode colors (Vibrant: Indigo, Purple, Pink)
+            colors={['#5227FF', '#FF9FFC', '#B19EEF']}
             mouseForce={20}
             cursorSize={100}
             isViscous
@@ -188,12 +157,12 @@ function App() {
             takeoverDuration={0.25}
             autoResumeDelay={3000}
             autoRampDuration={0.6}
-            color0={theme === 'dark' ? "#5227FF" : "#6366f1"}
-            color1={theme === 'dark' ? "#FF9FFC" : "#a855f7"}
-            color2={theme === 'dark' ? "#B19EEF" : "#ec4899"}
+            color0="#5227FF"
+            color1="#FF9FFC"
+            color2="#B19EEF"
           />
         </div>
-        <Navbar theme={theme} toggleTheme={toggleTheme} />
+        <Navbar />
         <div className="main-content">
           <AnimatedRoutes />
         </div>

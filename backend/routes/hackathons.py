@@ -24,8 +24,21 @@ def get_hackathons():
         if mode:
             query = query.filter_by(mode=mode)
         
-        # Order by deadline
-        hackathons = query.order_by(Hackathon.deadline.asc()).all()
+        # Sorting
+        sort_by = request.args.get('sort_by', 'deadline')
+        order = request.args.get('order', 'asc')
+        
+        if sort_by == 'created_at':
+            sort_attr = Hackathon.created_at
+        else:
+            sort_attr = Hackathon.deadline
+            
+        if order == 'desc':
+            query = query.order_by(sort_attr.desc())
+        else:
+            query = query.order_by(sort_attr.asc())
+        
+        hackathons = query.all()
         
         return jsonify([h.to_dict() for h in hackathons]), 200
         

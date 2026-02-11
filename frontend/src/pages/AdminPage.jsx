@@ -3,7 +3,7 @@ import { adminAPI, hackathonsAPI, internshipsAPI } from '../services/api';
 import Card, { CardHeader, CardBody, CardFooter } from '../components/Card';
 import Modal from '../components/Modal';
 import Popup from '../components/Popup';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminPage() {
     const [pending, setPending] = useState({ hackathons: [], internships: [] });
@@ -16,6 +16,9 @@ export default function AdminPage() {
     const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'users', 'manage', 'hostRequests'
     const [searchTerm, setSearchTerm] = useState('');
     const [isScanning, setIsScanning] = useState(false);
+
+    // Bulk Selection State
+    const [selectedItems, setSelectedItems] = useState(new Set()); // Stores strings: "{type}-{id}"
 
     // Popup State
     const [popup, setPopup] = useState({
@@ -112,6 +115,162 @@ export default function AdminPage() {
             console.error('Error rejecting:', error);
             showPopup('Error', 'Failed to reject item.', 'error');
         }
+    };
+
+    const activeTabStyle = {
+        cursor: 'pointer',
+        userSelect: 'none'
+    };
+
+    // Triple click logic for title
+    const [titleClickCount, setTitleClickCount] = useState(0);
+
+    useEffect(() => {
+        if (titleClickCount === 0) return;
+
+        const timer = setTimeout(() => {
+            setTitleClickCount(0);
+        }, 800);
+
+        if (titleClickCount === 3) {
+            handleTitleCycle();
+            handleSelectionCycle(); // Trigger the selection cycle
+            setTitleClickCount(0);
+        }
+
+        return () => clearTimeout(timer);
+    }, [titleClickCount]);
+
+    const [selectionStage, setSelectionStage] = useState(0); // 0: None, 1: Enable, 2: All, 3: Approved, 4: Rejected
+
+    const handleSelectionCycle = () => {
+        setSelectionStage(prev => {
+            const nextStage = (prev + 1) % 5; // 0 -> 1 -> 2 -> 3 -> 4 -> 0
+            const newSelected = new Set();
+
+            let items = [];
+            if (activeTab === 'manage') {
+                items = [...allOpportunities.hackathons, ...allOpportunities.internships];
+            } else if (activeTab === 'pending') {
+                items = [...pending.hackathons, ...pending.internships];
+            }
+
+            if (nextStage === 1) { // Enable Selection Mode
+                // showPopup('Selection Mode', 'Click items to select them manually.', 'info');
+                // Don't select anything yet, just enable the mode
+            } else if (nextStage === 2) { // Select All
+                items.forEach(item => {
+                    const type = item.organizer ? 'hackathon' : 'internship';
+                    newSelected.add(`${type}-${item.id}`);
+                });
+                // showPopup('Selection', `Selected ALL items (${newSelected.size})`, 'info');
+            } else if (nextStage === 3) { // Select Approved
+                items.filter(i => i.status === 'approved').forEach(item => {
+                    const type = item.organizer ? 'hackathon' : 'internship';
+                    newSelected.add(`${type}-${item.id}`);
+                });
+                // showPopup('Selection', `Selected APPROVED items (${newSelected.size})`, 'info');
+            } else if (nextStage === 4) { // Select Rejected
+                items.filter(i => i.status === 'rejected').forEach(item => {
+                    const type = item.organizer ? 'hackathon' : 'internship';
+                    newSelected.add(`${type}-${item.id}`);
+                });
+                // showPopup('Selection', `Selected REJECTED items (${newSelected.size})`, 'info');
+            } else {
+                // showPopup('Selection', 'Selection Cleared', 'info');
+            }
+
+            setSelectedItems(newSelected);
+            return nextStage;
+        });
+    };
+
+    // Reset selection stage when tab changes or manual selection occurs
+    useEffect(() => {
+        setSelectionStage(0);
+        setSelectedItems(new Set());
+    }, [activeTab]);
+
+    // Bulk Selection Logic
+    const toggleSelection = (type, id) => {
+        // Only allow selection if in selection mode (stage > 0)
+        // Note: Manual toggling shouldn't necessarily reset the stage to 0, 
+        // but it might break the "cycle" logic if we rely on stage for the Next step.
+        // Let's decide: does manual clicking keep us in "Selection Mode"? Yes.
+        // We just need to make sure we don't automatically reset selectionStage to 0 here unless we want to exit mode.
+        // User didn't specify, but "ability to select" implies staying in the mode.
+
+        if (selectionStage === 0) return; // Prevent selection in View mode
+
+        const key = `${type}-${id}`;
+        const newSelected = new Set(selectedItems);
+        if (newSelected.has(key)) {
+            newSelected.delete(key);
+        } else {
+            newSelected.add(key);
+        }
+        setSelectedItems(newSelected);
+        // setSelectionStage(0); // REMOVED: Keep selection mode active
+    };
+
+    const toggleSelectAll = (items, type) => {
+        const newSelected = new Set(selectedItems);
+        const allSelected = items.every(i => selectedItems.has(`${type}-${i.id}`));
+
+        if (allSelected) {
+            items.forEach(i => newSelected.delete(`${type}-${i.id}`));
+        } else {
+            items.forEach(i => newSelected.add(`${type}-${i.id}`));
+        }
+        setSelectedItems(newSelected);
+    };
+
+    const handleBulkAction = async (action) => {
+        if (selectedItems.size === 0) return;
+
+        showPopup('Confirm Bulk Action', `Are you sure you want to ${action} ${selectedItems.size} items?`, 'confirm', async () => {
+            try {
+                // Determine types and IDs
+                const hackathonIds = [];
+                const internshipIds = [];
+
+                selectedItems.forEach(key => {
+                    const [type, id] = key.split('-');
+                    if (type === 'hackathon') hackathonIds.push(id);
+                    else if (type === 'internship') internshipIds.push(id);
+                });
+
+                if (hackathonIds.length > 0) {
+                    await adminAPI.bulkAction({ type: 'hackathon', ids: hackathonIds, action });
+                }
+                if (internshipIds.length > 0) {
+                    await adminAPI.bulkAction({ type: 'internship', ids: internshipIds, action });
+                }
+
+                showPopup('Success', 'Bulk action completed successfully', 'success');
+                setSelectedItems(new Set());
+                setSelectionStage(0);
+                fetchPending();
+                fetchAllOpportunities();
+            } catch (error) {
+                console.error('Bulk action error:', error);
+                showPopup('Error', 'Failed to perform bulk action', 'error');
+            }
+        });
+    };
+
+    const handlePurgeAll = (type) => {
+        showPopup('DANGER: PURGE ALL', `Are you sure you want to PERMANENTLY DELETE ALL ${type.toUpperCase()}S? This action is IRREVERSIBLE!`, 'confirm', async () => {
+            try {
+                await adminAPI.purgeAll(type);
+                showPopup('Purged', `All ${type}s have been deleted.`, 'success');
+                setSelectionStage(0);
+                fetchAllOpportunities();
+                fetchPending();
+            } catch (error) {
+                showPopup('Error', 'Failed to purge data', 'error');
+            }
+        });
     };
 
     const handleApproveHost = async (userId) => {
@@ -223,7 +382,13 @@ export default function AdminPage() {
                 onConfirm={popup.onConfirm}
             />
 
-            <h1 className="text-center mb-4 text-glow" style={{ color: 'white' }}>Admin Dashboard</h1>
+            <h1
+                className="text-center mb-4 text-glow"
+                style={{ color: 'white', userSelect: 'none', cursor: 'pointer' }}
+                onClick={() => setTitleClickCount(prev => prev + 1)}
+            >
+                Admin Dashboard
+            </h1>
 
             {/* Quick Actions */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2.5rem' }}>
@@ -334,12 +499,64 @@ export default function AdminPage() {
             {/* Pending Approvals Tab */}
             {activeTab === 'pending' && (
                 <div className="fade-in">
+                    <button
+                        onClick={handleSelectionCycle}
+                        style={{
+                            marginBottom: '1rem',
+                            padding: '0.75rem 1.5rem',
+                            background: selectionStage === 0 ? 'var(--color-bg-card)' :
+                                selectionStage === 1 ? 'var(--primary-color)' :
+                                    selectionStage === 2 ? '#6366f1' : // Indigo
+                                        selectionStage === 3 ? '#10b981' : // Success Green
+                                            '#f59e0b', // Warning Amber
+                            color: 'white',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            transition: 'all 0.3s ease',
+                            boxShadow: selectionStage > 0 ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none'
+                        }}
+                    >
+                        <span className="material-icons">
+                            {selectionStage === 0 ? 'filter_list' :
+                                selectionStage === 1 ? 'check_box_outline_blank' :
+                                    selectionStage === 2 ? 'done_all' :
+                                        selectionStage === 3 ? 'check_circle' : 'cancel'}
+                        </span>
+                        {selectionStage === 0 ? 'Select' :
+                            selectionStage === 1 ? 'Select (Manual)' :
+                                selectionStage === 2 ? 'Select (All)' :
+                                    selectionStage === 3 ? 'Select (Approved)' :
+                                        selectionStage === 4 ? 'Select (Rejected)' : 'Select'}
+                    </button>
                     <h2 className="mb-3 text-white">Pending Hackathons ({pending.hackathons.length})</h2>
                     <div className="grid grid-3 mb-4">
                         {pending.hackathons
                             .filter(h => h.title.toLowerCase().includes(searchTerm.toLowerCase()) || h.organizer.toLowerCase().includes(searchTerm.toLowerCase()))
                             .map((hackathon) => (
-                                <Card key={hackathon.id}>
+                                <Card
+                                    key={hackathon.id}
+                                    onClick={() => {
+                                        if (selectionStage > 0) {
+                                            toggleSelection('hackathon', hackathon.id);
+                                        } else {
+                                            openModal(hackathon, 'hackathon');
+                                        }
+                                    }}
+                                    style={{
+                                        cursor: 'pointer',
+                                        border: selectedItems.has(`hackathon-${hackathon.id}`) ? '2px solid var(--primary-color)' : '1px solid rgba(255,255,255,0.1)',
+                                        transform: selectedItems.has(`hackathon-${hackathon.id}`) ? 'scale(1.02)' : 'scale(1)',
+                                        transition: 'all 0.2s ease',
+                                        opacity: selectionStage === 0 ? 1 : (selectedItems.has(`hackathon-${hackathon.id}`) ? 1 : 0.7)
+                                    }}
+                                >
+                                    <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 50 }}>
+                                    </div>
                                     <CardHeader>{hackathon.title}</CardHeader>
                                     <CardBody>
                                         <p><strong>Organizer:</strong> {hackathon.organizer}</p>
@@ -351,9 +568,9 @@ export default function AdminPage() {
                                     </CardBody>
                                     <CardFooter>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', width: '100%', position: 'relative', zIndex: 20, pointerEvents: 'auto' }}>
-                                            <button onClick={() => openModal(hackathon, 'hackathon')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>View</button>
-                                            <button onClick={() => handleApprove('hackathon', hackathon.id)} className="btn btn-success" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>Approve</button>
-                                            <button onClick={() => handleReject('hackathon', hackathon.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>Reject</button>
+                                            <button onClick={(e) => { e.stopPropagation(); openModal(hackathon, 'hackathon'); }} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>View</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleApprove('hackathon', hackathon.id); }} className="btn btn-success" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>Approve</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleReject('hackathon', hackathon.id); }} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>Reject</button>
                                         </div>
                                     </CardFooter>
                                 </Card>
@@ -366,7 +583,25 @@ export default function AdminPage() {
                         {pending.internships
                             .filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase()) || i.company.toLowerCase().includes(searchTerm.toLowerCase()))
                             .map((internship) => (
-                                <Card key={internship.id}>
+                                <Card
+                                    key={internship.id}
+                                    onClick={() => {
+                                        if (selectionStage > 0) {
+                                            toggleSelection('internship', internship.id);
+                                        } else {
+                                            openModal(internship, 'internship');
+                                        }
+                                    }}
+                                    style={{
+                                        cursor: 'pointer',
+                                        border: selectedItems.has(`internship-${internship.id}`) ? '2px solid var(--primary-color)' : '1px solid rgba(255,255,255,0.1)',
+                                        transform: selectedItems.has(`internship-${internship.id}`) ? 'scale(1.02)' : 'scale(1)',
+                                        transition: 'all 0.2s ease',
+                                        opacity: selectionStage === 0 ? 1 : (selectedItems.has(`internship-${internship.id}`) ? 1 : 0.7)
+                                    }}
+                                >
+                                    <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 50 }}>
+                                    </div>
                                     <CardHeader>{internship.title}</CardHeader>
                                     <CardBody>
                                         <p><strong>Company:</strong> {internship.company}</p>
@@ -378,9 +613,9 @@ export default function AdminPage() {
                                     </CardBody>
                                     <CardFooter>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', width: '100%', position: 'relative', zIndex: 20, pointerEvents: 'auto' }}>
-                                            <button onClick={() => openModal(internship, 'internship')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>View</button>
-                                            <button onClick={() => handleApprove('internship', internship.id)} className="btn btn-success" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>Approve</button>
-                                            <button onClick={() => handleReject('internship', internship.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>Reject</button>
+                                            <button onClick={(e) => { e.stopPropagation(); openModal(internship, 'internship'); }} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>View</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleApprove('internship', internship.id); }} className="btn btn-success" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>Approve</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleReject('internship', internship.id); }} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}>Reject</button>
                                         </div>
                                     </CardFooter>
                                 </Card>
@@ -393,7 +628,42 @@ export default function AdminPage() {
             {/* Manage Opportunities Tab */}
             {activeTab === 'manage' && (
                 <div className="fade-in">
-                    <h2 className="mb-3 text-white">Manage Hackathons</h2>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h2 className="mb-0 text-white">Manage Hackathons</h2>
+                        <button
+                            onClick={handleSelectionCycle}
+                            style={{
+                                padding: '0.6rem 1.2rem',
+                                background: selectionStage === 0 ? 'var(--color-bg-card)' :
+                                    selectionStage === 1 ? 'var(--primary-color)' :
+                                        selectionStage === 2 ? '#6366f1' :
+                                            selectionStage === 3 ? '#10b981' :
+                                                '#f59e0b',
+                                color: 'white',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                transition: 'all 0.3s ease',
+                                boxShadow: selectionStage > 0 ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none'
+                            }}
+                        >
+                            <span className="material-icons" style={{ fontSize: '1.2rem' }}>
+                                {selectionStage === 0 ? 'filter_list' :
+                                    selectionStage === 1 ? 'check_box_outline_blank' :
+                                        selectionStage === 2 ? 'done_all' :
+                                            selectionStage === 3 ? 'check_circle' : 'cancel'}
+                            </span>
+                            {selectionStage === 0 ? 'Select' :
+                                selectionStage === 1 ? 'Select (Manual)' :
+                                    selectionStage === 2 ? 'Select (All)' :
+                                        selectionStage === 3 ? 'Select (Approved)' :
+                                            selectionStage === 4 ? 'Select (Rejected)' : 'Select'}
+                        </button>
+                    </div>
                     <div className="card mb-4" style={{ overflowX: 'auto', padding: '0' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
@@ -402,14 +672,46 @@ export default function AdminPage() {
                                     <th style={tableHeaderStyle}>Organizer</th>
                                     <th style={tableHeaderStyle}>Status</th>
                                     <th style={tableHeaderStyle}>Created At</th>
-                                    <th style={tableHeaderStyle}>Actions</th>
+                                    <th style={tableHeaderStyle}>
+                                        Actions
+                                        <button
+                                            onClick={() => handlePurgeAll('hackathon')}
+                                            style={{
+                                                marginLeft: '0.5rem',
+                                                background: 'none',
+                                                border: 'none',
+                                                color: '#ef4444',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem',
+                                                textDecoration: 'underline'
+                                            }}
+                                        >
+                                            Purge All
+                                        </button>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {allOpportunities.hackathons
                                     .filter(h => h.title.toLowerCase().includes(searchTerm.toLowerCase()) || h.organizer.toLowerCase().includes(searchTerm.toLowerCase()))
                                     .map((hackathon) => (
-                                        <tr key={hackathon.id}>
+                                        <tr
+                                            key={hackathon.id}
+                                            onClick={() => {
+                                                if (selectionStage > 0) {
+                                                    toggleSelection('hackathon', hackathon.id);
+                                                }
+                                                // Table rows usually don't have "View" as default click action, but maybe they should?
+                                                // For now, only toggle valid in selection mode.
+                                            }}
+                                            style={{
+                                                ...tableCellStyle,
+                                                background: selectedItems.has(`hackathon-${hackathon.id}`) ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                                cursor: selectionStage > 0 ? 'pointer' : 'default',
+                                                transition: 'background 0.2s',
+                                                opacity: selectionStage === 0 ? 1 : (selectedItems.has(`hackathon-${hackathon.id}`) ? 1 : 0.7)
+                                            }}
+                                        >
                                             <td style={tableCellStyle}>{hackathon.title}</td>
                                             <td style={tableCellStyle}>{hackathon.organizer}</td>
                                             <td style={tableCellStyle}>
@@ -420,8 +722,8 @@ export default function AdminPage() {
                                             <td style={tableCellStyle}>{new Date(hackathon.created_at).toLocaleDateString()}</td>
                                             <td style={tableCellStyle}>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => openModal(hackathon, 'hackathon')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>View</button>
-                                                    <button onClick={() => handleDeleteOpportunity('hackathon', hackathon.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>Delete</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); openModal(hackathon, 'hackathon'); }} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>View</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteOpportunity('hackathon', hackathon.id); }} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>Delete</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -430,8 +732,43 @@ export default function AdminPage() {
                         </table>
                     </div>
 
-                    <h2 className="mb-3 text-white">Manage Internships</h2>
-                    <div className="card" style={{ overflowX: 'auto', padding: '0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h2 className="mb-0 text-white">Manage Internships</h2>
+                        <button
+                            onClick={handleSelectionCycle}
+                            style={{
+                                padding: '0.6rem 1.2rem',
+                                background: selectionStage === 0 ? 'var(--color-bg-card)' :
+                                    selectionStage === 1 ? 'var(--primary-color)' :
+                                        selectionStage === 2 ? '#6366f1' :
+                                            selectionStage === 3 ? '#10b981' :
+                                                '#f59e0b',
+                                color: 'white',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                transition: 'all 0.3s ease',
+                                boxShadow: selectionStage > 0 ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none'
+                            }}
+                        >
+                            <span className="material-icons" style={{ fontSize: '1.2rem' }}>
+                                {selectionStage === 0 ? 'filter_list' :
+                                    selectionStage === 1 ? 'check_box_outline_blank' :
+                                        selectionStage === 2 ? 'done_all' :
+                                            selectionStage === 3 ? 'check_circle' : 'cancel'}
+                            </span>
+                            {selectionStage === 0 ? 'Select' :
+                                selectionStage === 1 ? 'Select (Manual)' :
+                                    selectionStage === 2 ? 'Select (All)' :
+                                        selectionStage === 3 ? 'Select (Approved)' :
+                                            selectionStage === 4 ? 'Select (Rejected)' : 'Select'}
+                        </button>
+                    </div>
+                    <div className="card" style={{ padding: '0', overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr>
@@ -439,14 +776,44 @@ export default function AdminPage() {
                                     <th style={tableHeaderStyle}>Company</th>
                                     <th style={tableHeaderStyle}>Status</th>
                                     <th style={tableHeaderStyle}>Created At</th>
-                                    <th style={tableHeaderStyle}>Actions</th>
+                                    <th style={tableHeaderStyle}>
+                                        Actions
+                                        <button
+                                            onClick={() => handlePurgeAll('internship')}
+                                            style={{
+                                                marginLeft: '0.5rem',
+                                                background: 'none',
+                                                border: 'none',
+                                                color: '#ef4444',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem',
+                                                textDecoration: 'underline'
+                                            }}
+                                        >
+                                            Purge All
+                                        </button>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {allOpportunities.internships
                                     .filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase()) || i.company.toLowerCase().includes(searchTerm.toLowerCase()))
                                     .map((internship) => (
-                                        <tr key={internship.id}>
+                                        <tr
+                                            key={internship.id}
+                                            onClick={() => {
+                                                if (selectionStage > 0) {
+                                                    toggleSelection('internship', internship.id);
+                                                }
+                                            }}
+                                            style={{
+                                                ...tableCellStyle,
+                                                background: selectedItems.has(`internship-${internship.id}`) ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                                cursor: selectionStage > 0 ? 'pointer' : 'default',
+                                                transition: 'background 0.2s',
+                                                opacity: selectionStage === 0 ? 1 : (selectedItems.has(`internship-${internship.id}`) ? 1 : 0.7)
+                                            }}
+                                        >
                                             <td style={tableCellStyle}>{internship.title}</td>
                                             <td style={tableCellStyle}>{internship.company}</td>
                                             <td style={tableCellStyle}>
@@ -457,8 +824,8 @@ export default function AdminPage() {
                                             <td style={tableCellStyle}>{new Date(internship.created_at).toLocaleDateString()}</td>
                                             <td style={tableCellStyle}>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => openModal(internship, 'internship')} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>View</button>
-                                                    <button onClick={() => handleDeleteOpportunity('internship', internship.id)} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>Delete</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); openModal(internship, 'internship'); }} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>View</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteOpportunity('internship', internship.id); }} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>Delete</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -589,6 +956,79 @@ export default function AdminPage() {
                     </div>
                 </Modal>
             )}
-        </div>
+
+            {/* Bulk Action Bar */}
+            <AnimatePresence>
+                {selectedItems.size > 0 && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '2rem',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(15, 23, 42, 0.9)',
+                            backdropFilter: 'blur(10px)',
+                            padding: '1rem 2rem',
+                            borderRadius: '16px',
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1.5rem',
+                            zIndex: 1000,
+                            border: '1px solid rgba(255,255,255,0.1)'
+                        }}
+                    >
+                        <span style={{ color: 'white', fontWeight: '600' }}>
+                            {selectedItems.size} selected
+                        </span>
+
+                        <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
+
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <button
+                                onClick={() => handleBulkAction('approve')}
+                                className="btn btn-success"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                            >
+                                Approve Selected
+                            </button>
+                            <button
+                                onClick={() => handleBulkAction('reject')}
+                                className="btn btn-danger"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', background: '#eab308', borderColor: '#eab308', color: 'black' }}
+                            >
+                                Reject Selected
+                            </button>
+                            <button
+                                onClick={() => handleBulkAction('delete')}
+                                className="btn btn-danger"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                            >
+                                Delete Selected
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setSelectedItems(new Set());
+                                setSelectionStage(0);
+                            }}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'rgba(255,255,255,0.6)',
+                                cursor: 'pointer',
+                                marginLeft: '0.5rem'
+                            }}
+                        >
+                            <span className="material-icons">close</span>
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div >
     );
 }
