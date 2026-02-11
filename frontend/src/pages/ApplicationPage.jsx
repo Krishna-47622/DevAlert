@@ -102,7 +102,7 @@ export default function ApplicationPage() {
                     <div className="card">
                         <h1>{event.title}</h1>
                         <p style={{ fontSize: '1.125rem', marginBottom: '2rem' }}>
-                            This {type} is hosted externally on <strong>{event.source}</strong>
+                            This {type} is hosted externally on <strong>{event.source ? event.source.charAt(0).toUpperCase() + event.source.slice(1) : ''}</strong>
                         </p>
 
                         <div style={{ marginBottom: '2rem' }}>
@@ -127,7 +127,7 @@ export default function ApplicationPage() {
                                 className="btn btn-primary"
                                 style={{ flex: 1 }}
                             >
-                                Apply on {event.source}
+                                Apply on {event.source ? event.source.charAt(0).toUpperCase() + event.source.slice(1) : 'External Site'}
                             </a>
                             <button onClick={() => navigate('/')} className="btn btn-secondary">
                                 Back to Home
@@ -179,7 +179,7 @@ export default function ApplicationPage() {
                             <>
                                 <div>
                                     <strong>Organizer:</strong><br />
-                                    {event.organizer}
+                                    {event.organizer ? event.organizer.charAt(0).toUpperCase() + event.organizer.slice(1) : 'Not Specified'}
                                 </div>
                                 {event.prize_pool && (
                                     <div>

@@ -30,8 +30,8 @@
   --color-warning: #f59e0b;
   --color-info: #3b82f6;
 
-  --color-border: #27272a;
-  --color-border-light: #3f3f46;
+  --color-border: #27272a00;
+  --color-border-light: #3f3f4600;
 
   /* New Variables used by Navbar */
   --text-primary: var(--color-text-primary);
@@ -307,6 +307,10 @@ a:hover {
   overflow: hidden;
 }
 
+.btn:hover:not(:disabled) {
+  color: inherit;
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -323,6 +327,7 @@ a:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 15px rgba(99, 102, 241, 0.36);
   filter: brightness(1.1);
+  color: white !important;
 }
 
 .btn-primary:active:not(:disabled) {
