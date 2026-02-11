@@ -206,16 +206,24 @@ export default function AccountSettings() {
                         </div>
                         <div className="card-body">
                             <div style={{ display: 'grid', gap: '1rem' }}>
-                                {/* Display Username */}
+                                {/* Immutable Username */}
+                                <div style={{ marginBottom: '0.5rem' }}>
+                                    <label className="form-label">Username</label>
+                                    <p style={{ margin: '0.25rem 0 1rem 0', color: 'var(--color-text-secondary)', fontWeight: '500' }}>
+                                        @{user?.username}
+                                    </p>
+                                </div>
+
+                                {/* Display Name Edit */}
                                 <div>
-                                    <label className="form-label">Display Username</label>
+                                    <label className="form-label">Display Name</label>
                                     <div style={{ display: 'flex', gap: '1rem' }}>
                                         <input
                                             type="text"
                                             className="form-input"
-                                            value={user?.display_name || user?.username || ''}
+                                            value={user?.display_name ?? ''}
                                             onChange={(e) => setUser({ ...user, display_name: e.target.value })}
-                                            placeholder="Enter your display name"
+                                            placeholder={user?.username || "Enter your display name"}
                                         />
                                         <button
                                             className="btn btn-primary"

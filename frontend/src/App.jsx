@@ -132,7 +132,7 @@ function App() {
   return (
     <Router>
       <div className="app">
-        {/* <Cursor /> */}
+        <Cursor />
         <div style={{
           width: '100vw',
           height: '100vh',

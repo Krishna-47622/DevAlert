@@ -20,9 +20,13 @@ export default function ApplicationPage() {
     useEffect(() => {
         fetchEvent();
         try {
-            const user = JSON.parse(localStorage.getItem('user') || 'null');
-            if (user?.full_name) {
-                setFormData(prev => ({ ...prev, name: user.full_name }));
+            const userObj = JSON.parse(localStorage.getItem('user') || 'null');
+            if (userObj) {
+                setFormData(prev => ({
+                    ...prev,
+                    name: userObj.full_name || '',
+                    email: userObj.email || ''
+                }));
             }
         } catch (e) {
             console.error("ApplicationPage user parse error", e);

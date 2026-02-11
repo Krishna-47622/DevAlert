@@ -53,9 +53,9 @@ export default function Dashboard() {
     return (
         <div className="container" style={{ paddingTop: '2rem', paddingBottom: '2rem' }}>
             <h1 className="mb-4">Dashboard</h1>
-            {user?.full_name && (
+            {(user?.display_name || user?.username) && (
                 <h2 style={{ fontSize: '1.2rem', color: 'var(--color-text-secondary)', marginBottom: '1.5rem' }}>
-                    Welcome, <span style={{ color: 'var(--primary-color)' }}>{user.full_name}</span>
+                    Welcome, <span style={{ color: 'var(--primary-color)' }}>{user.display_name || user.username}</span>
                 </h2>
             )}
 

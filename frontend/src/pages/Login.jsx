@@ -331,11 +331,19 @@ export default function Login() {
                                         const height = 600;
                                         const left = (window.screen.width / 2) - (width / 2);
                                         const top = (window.screen.height / 2) - (height / 2);
-                                        window.open(
+                                        const popup = window.open(
                                             '/api/auth/oauth/google',
                                             'GoogleOAuth',
                                             `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
                                         );
+
+                                        // Check if popup is closed
+                                        const checkPopup = setInterval(() => {
+                                            if (!popup || popup.closed) {
+                                                clearInterval(checkPopup);
+                                                setLoading(false);
+                                            }
+                                        }, 1000);
                                     }}
                                     className="btn"
                                     style={{

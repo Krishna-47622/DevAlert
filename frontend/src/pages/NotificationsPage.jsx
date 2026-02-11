@@ -10,13 +10,12 @@ export default function NotificationsPage() {
 
     useEffect(() => {
         fetchNotifications();
-    }, [filter]);
+    }, []); // Fetch once on mount
 
     const fetchNotifications = async () => {
         setLoading(true);
         try {
-            const params = filter === 'all' ? {} : { is_read: filter === 'read' };
-            const response = await notificationsAPI.getAll(params);
+            const response = await notificationsAPI.getAll({});
             setNotifications(response.data);
         } catch (error) {
             console.error('Error fetching notifications:', error);
@@ -127,43 +126,49 @@ export default function NotificationsPage() {
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {notifications.map((notification) => (
-                            <div
-                                key={notification.id}
-                                className="card"
-                                onClick={() => handleNotificationClick(notification)}
-                                style={{
-                                    cursor: 'pointer',
-                                    backgroundColor: !notification.is_read ? 'rgba(59, 130, 246, 0.05)' : 'var(--color-bg-card)',
-                                    borderLeft: !notification.is_read ? '3px solid var(--color-accent)' : '3px solid transparent',
-                                    padding: '1rem 1.25rem'
-                                }}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                                            <h4 style={{ margin: 0, fontSize: '0.9375rem' }}>{notification.title}</h4>
-                                            {!notification.is_read && (
-                                                <div style={{
-                                                    width: '8px',
-                                                    height: '8px',
-                                                    backgroundColor: 'var(--color-accent)',
-                                                    borderRadius: '50%'
-                                                }}></div>
-                                            )}
+                        {notifications
+                            .filter(n => {
+                                if (filter === 'unread') return !n.is_read;
+                                if (filter === 'read') return n.is_read;
+                                return true;
+                            })
+                            .map((notification) => (
+                                <div
+                                    key={notification.id}
+                                    className="card"
+                                    onClick={() => handleNotificationClick(notification)}
+                                    style={{
+                                        cursor: 'pointer',
+                                        backgroundColor: !notification.is_read ? 'rgba(59, 130, 246, 0.05)' : 'var(--color-bg-card)',
+                                        borderLeft: !notification.is_read ? '3px solid var(--color-accent)' : '3px solid transparent',
+                                        padding: '1rem 1.25rem'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                                <h4 style={{ margin: 0, fontSize: '0.9375rem' }}>{notification.title}</h4>
+                                                {!notification.is_read && (
+                                                    <div style={{
+                                                        width: '8px',
+                                                        height: '8px',
+                                                        backgroundColor: 'var(--color-accent)',
+                                                        borderRadius: '50%'
+                                                    }}></div>
+                                                )}
+                                            </div>
+                                            <p style={{ margin: '0.5rem 0', fontSize: '0.875rem' }}>{notification.message}</p>
+                                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                                                {new Date(notification.created_at).toLocaleDateString()} at{' '}
+                                                {new Date(notification.created_at).toLocaleTimeString()}
+                                            </p>
                                         </div>
-                                        <p style={{ margin: '0.5rem 0', fontSize: '0.875rem' }}>{notification.message}</p>
-                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-                                            {new Date(notification.created_at).toLocaleDateString()} at{' '}
-                                            {new Date(notification.created_at).toLocaleTimeString()}
-                                        </p>
+                                        <span className={`badge badge-info`} style={{ marginLeft: '1rem' }}>
+                                            {notification.event_type}
+                                        </span>
                                     </div>
-                                    <span className={`badge badge-info`} style={{ marginLeft: '1rem' }}>
-                                        {notification.event_type}
-                                    </span>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 )}
             </div>
