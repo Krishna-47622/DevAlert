@@ -40,6 +40,7 @@ export const authAPI = {
     register: (data) => api.post('/auth/register', data),
     login: (data) => api.post('/auth/login', data),
     getCurrentUser: () => api.get('/auth/me'),
+    updateProfile: (data) => api.put('/auth/update-profile', data),
 
     // Email Verification
     verifyEmail: (token) => api.get(`/auth/verify-email/${token}`),

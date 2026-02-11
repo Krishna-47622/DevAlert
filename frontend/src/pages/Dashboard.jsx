@@ -9,8 +9,12 @@ export default function Dashboard() {
     const [recentHackathons, setRecentHackathons] = useState([]);
     const [recentInternships, setRecentInternships] = useState([]);
     const [loading, setLoading] = useState(true);
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
-
+    let user = null;
+    try {
+        user = JSON.parse(localStorage.getItem('user') || 'null');
+    } catch (e) {
+        console.error("Dashboard user parse error", e);
+    }
     useEffect(() => {
         fetchData();
     }, []);
@@ -49,6 +53,11 @@ export default function Dashboard() {
     return (
         <div className="container" style={{ paddingTop: '2rem', paddingBottom: '2rem' }}>
             <h1 className="mb-4">Dashboard</h1>
+            {user?.full_name && (
+                <h2 style={{ fontSize: '1.2rem', color: 'var(--color-text-secondary)', marginBottom: '1.5rem' }}>
+                    Welcome, <span style={{ color: 'var(--primary-color)' }}>{user.full_name}</span>
+                </h2>
+            )}
 
             {stats && user?.role === 'admin' && (
                 <div className="grid grid-3 mb-4">

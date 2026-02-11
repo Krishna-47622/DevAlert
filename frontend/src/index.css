@@ -66,8 +66,27 @@
   --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+[data-theme='light'] {
+  --background-color: #f0f2f5;
+  --color-bg-primary: #f0f2f5;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #e4e4e7;
+  --color-bg-card: rgba(255, 255, 255, 0.7);
+
+  --color-text-primary: #18181b;
+  --color-text-secondary: #52525b;
+  --color-text-tertiary: #71717a;
+
+  --color-border: #e4e4e7;
+  --color-border-light: #d4d4d8;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
 html {
-  background-color: #000000;
+  background-color: var(--background-color);
   /* Force black background */
 }
 
@@ -594,12 +613,12 @@ a:hover {
 
 .badge-success {
   background-color: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  color: #059669;
 }
 
 .badge-warning {
   background-color: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
+  color: #d88906;
 }
 
 .badge-danger {

@@ -177,6 +177,62 @@ def get_current_user():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@auth_bp.route('/update-profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """Update user profile (Full Name, Theme)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+            
+        data = request.get_json()
+        
+        # Handle Full Name Update with Rate Limiting
+        if 'full_name' in data:
+            new_name = data['full_name']
+            now = datetime.utcnow()
+            
+            # Initialize window if not set or expired (1 week window)
+            if not user.full_name_window_start or now > user.full_name_window_start + timedelta(weeks=1):
+                user.full_name_window_start = now
+                user.full_name_update_count = 0
+            
+            # Check limit (2 updates per week)
+            if user.full_name_update_count >= 2:
+                 # Check if the new name is actually different before blocking
+                 if user.full_name != new_name:
+                    reset_date = user.full_name_window_start + timedelta(weeks=1)
+                    return jsonify({
+                        'error': f'Name update limit reached. You can update your name again after {reset_date.strftime("%Y-%m-%d")}.'
+                    }), 429
+            
+            if user.full_name != new_name:
+                user.full_name = new_name
+                user.full_name_update_count += 1
+        
+        # Handle Display Name Update
+        if 'display_name' in data:
+            current_user = user # Ensure consistency
+            current_user.display_name = data['display_name']
+        
+        # Handle Theme Preference
+        if 'theme_preference' in data:
+            user.theme_preference = data['theme_preference']
+            
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'user': user.to_dict()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 # Email Verification Endpoints
 
 @auth_bp.route('/verify-email/<token>', methods=['GET'])

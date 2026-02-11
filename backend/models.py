@@ -36,6 +36,15 @@ class User(db.Model):
     oauth_provider = db.Column(db.String(20), nullable=True)  # 'google', 'github', or None
     oauth_provider_id = db.Column(db.String(255), nullable=True)  # Provider's user ID
     
+    # Personalization & Restrictions
+    full_name = db.Column(db.String(150), nullable=True)
+    display_name = db.Column(db.String(80), nullable=True)
+    theme_preference = db.Column(db.String(20), default='dark')
+    
+    # Name Update Rate Limiting
+    full_name_update_count = db.Column(db.Integer, default=0)
+    full_name_window_start = db.Column(db.DateTime, nullable=True)
+    
     # Relationships
     applications = db.relationship('Application', backref='user', lazy=True, cascade='all, delete-orphan')
     
@@ -63,6 +72,9 @@ class User(db.Model):
             'email_verified': self.email_verified,
             'two_factor_enabled': self.two_factor_enabled,
             'oauth_provider': self.oauth_provider,
+            'full_name': self.full_name,
+            'display_name': self.display_name,
+            'theme_preference': self.theme_preference,
             'created_at': self.created_at.isoformat()
         }
 

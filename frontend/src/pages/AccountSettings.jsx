@@ -173,16 +173,138 @@ export default function AccountSettings() {
                         </div>
                         <div className="card-body">
                             <div style={{ display: 'grid', gap: '1rem' }}>
+                                {/* Display Username */}
                                 <div>
-                                    <label className="form-label">Username</label>
-                                    <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text)' }}>{user?.username}</p>
+                                    <label className="form-label">Display Username</label>
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={user?.display_name || user?.username || ''}
+                                            onChange={(e) => setUser({ ...user, display_name: e.target.value })}
+                                            placeholder="Enter your display name"
+                                        />
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={async () => {
+                                                try {
+                                                    await authAPI.updateProfile({ display_name: user.display_name });
+                                                    alert('Display name updated successfully!');
+                                                    // Update local storage
+                                                    localStorage.setItem('user', JSON.stringify(user));
+                                                } catch (err) {
+                                                    alert(err.response?.data?.error || 'Failed to update display name');
+                                                }
+                                            }}
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: '0.5rem' }}>
+                                        This is how you will appear to other users.
+                                    </p>
                                 </div>
+
+                                {/* Full Name Edit */}
+                                <div>
+                                    <label className="form-label">Full Name</label>
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={user?.full_name || ''}
+                                            onChange={(e) => setUser({ ...user, full_name: e.target.value })}
+                                            placeholder="Enter your full name"
+                                        />
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={async () => {
+                                                try {
+                                                    await authAPI.updateProfile({ full_name: user.full_name });
+                                                    alert('Name updated successfully!');
+                                                    // Update local storage
+                                                    localStorage.setItem('user', JSON.stringify(user));
+                                                } catch (err) {
+                                                    alert(err.response?.data?.error || 'Failed to update name');
+                                                }
+                                            }}
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: '0.5rem' }}>
+                                        You can update your full name only 2 times per week.
+                                    </p>
+                                </div>
+
+                                {/* Theme Preference */}
+                                <div>
+                                    <label className="form-label">Theme Preference</label>
+                                    <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+                                        <button
+                                            onClick={async () => {
+                                                const newTheme = 'light';
+                                                setUser({ ...user, theme_preference: newTheme });
+                                                document.documentElement.setAttribute('data-theme', newTheme);
+                                                try {
+                                                    await authAPI.updateProfile({ theme_preference: newTheme });
+                                                    localStorage.setItem('user', JSON.stringify({ ...user, theme_preference: newTheme }));
+                                                } catch (e) { console.error(e); }
+                                            }}
+                                            style={{
+                                                background: user?.theme_preference === 'light' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                                                border: `2px solid ${user?.theme_preference === 'light' ? '#6366f1' : 'var(--color-border)'}`,
+                                                borderRadius: '12px',
+                                                padding: '1.5rem',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                width: '120px',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                        >
+                                            <span className="material-icons" style={{ fontSize: '32px', color: '#fbbf24' }}>light_mode</span>
+                                            <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>Light</span>
+                                        </button>
+
+                                        <button
+                                            onClick={async () => {
+                                                const newTheme = 'dark';
+                                                setUser({ ...user, theme_preference: newTheme });
+                                                document.documentElement.setAttribute('data-theme', newTheme);
+                                                try {
+                                                    await authAPI.updateProfile({ theme_preference: newTheme });
+                                                    localStorage.setItem('user', JSON.stringify({ ...user, theme_preference: newTheme }));
+                                                } catch (e) { console.error(e); }
+                                            }}
+                                            style={{
+                                                background: !user?.theme_preference || user?.theme_preference === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                                                border: `2px solid ${!user?.theme_preference || user?.theme_preference === 'dark' ? '#6366f1' : 'var(--color-border)'}`,
+                                                borderRadius: '12px',
+                                                padding: '1.5rem',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                width: '120px',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                        >
+                                            <span className="material-icons" style={{ fontSize: '32px', color: '#818cf8' }}>dark_mode</span>
+                                            <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>Dark</span>
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label className="form-label">Email</label>
                                     <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text)' }}>{user?.email}</p>
                                     {!user?.email_verified && (
                                         <div style={{ marginTop: '0.5rem' }}>
-                                            <span className="badge" style={{ background: 'var(--color-warning)', marginRight: '0.5rem' }}>Unverified</span>
+                                            <span className="badge" style={{ background: 'var(--color-warning)', color: '#000', marginRight: '0.5rem' }}>Unverified</span>
                                             <button
                                                 onClick={handleResendVerification}
                                                 className="btn btn-secondary"
@@ -200,7 +322,7 @@ export default function AccountSettings() {
                                         </div>
                                     )}
                                     {user?.email_verified && (
-                                        <span className="badge" style={{ background: 'var(--color-success)', marginTop: '0.5rem', display: 'inline-block' }}>Verified ✓</span>
+                                        <span className="badge" style={{ background: 'var(--color-success)', color: '#fff', marginTop: '0.5rem', display: 'inline-block' }}>Verified ✓</span>
                                     )}
                                 </div>
                                 <div>

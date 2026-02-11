@@ -48,6 +48,15 @@ def migrate_database():
         # OAuth Integration
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider VARCHAR(20)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider_id VARCHAR(255)",
+
+        # Personalization
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(150)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(80)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_preference VARCHAR(20) DEFAULT 'dark'",
+        
+        # Rate Limiting
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name_update_count INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name_window_start TIMESTAMP",
     ]
     
     # SQLite doesn't support IF NOT EXISTS in ALTER TABLE, handle differently
@@ -63,6 +72,11 @@ def migrate_database():
             "two_factor_secret TEXT",
             "oauth_provider TEXT",
             "oauth_provider_id TEXT",
+            "full_name TEXT",
+            "display_name TEXT",
+            "theme_preference TEXT DEFAULT 'dark'",
+            "full_name_update_count INTEGER DEFAULT 0",
+            "full_name_window_start TIMESTAMP",
         ]
         
         with engine.connect() as conn:

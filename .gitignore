@@ -53,3 +53,14 @@ frontend/build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local DB Repair Scripts
+fix_db_schema.py
+verify_all_dbs.py
+final_fix.py
+ultimate_db_fix.py
+emergency_fix.py
+diagnose_db.py
+fix_db_final.py
+*.log
+*.bat

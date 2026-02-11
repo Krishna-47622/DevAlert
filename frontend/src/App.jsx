@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
@@ -25,7 +26,12 @@ import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
 function PrivateRoute({ children, adminOnly = false }) {
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch (e) {
+    console.error("Error parsing user from localStorage", e);
+  }
 
   if (!user) {
     return <Navigate to="/login" />;
@@ -117,49 +123,82 @@ function AnimatedRoutes() {
 }
 
 function App() {
+  const [theme, setTheme] = useState('dark');
+
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
+      let savedTheme = 'dark';
+      if (user?.theme_preference) {
+        savedTheme = user.theme_preference;
+      } else if (localStorage.getItem('theme')) {
+        savedTheme = localStorage.getItem('theme');
+      }
+
+      setTheme(savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    } catch (e) {
+      console.error("Theme initialization error:", e);
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+
+    // Update user preference if logged in
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (user) {
+      user.theme_preference = newTheme;
+      localStorage.setItem('user', JSON.stringify(user));
+      // Optional: Persist to backend
+    }
+  };
+
   return (
     <Router>
-      <ErrorBoundary>
-        <SmoothScroll>
-          <div className="app">
-            <Cursor />
-            <div style={{
-              width: '100vw',
-              height: '100vh',
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              zIndex: -1
-            }}>
-              <LiquidEther
-                colors={['#5227FF', '#FF9FFC', '#B19EEF']}
-                mouseForce={20}
-                cursorSize={100}
-                isViscous
-                viscous={10}
-                iterationsViscous={10}
-                iterationsPoisson={10}
-                resolution={0.2}
-                isBounce={false}
-                autoDemo
-                autoSpeed={0.5}
-                autoIntensity={2.2}
-                takeoverDuration={0.25}
-                autoResumeDelay={3000}
-                autoRampDuration={0.6}
-                color0="#5227FF"
-                color1="#FF9FFC"
-                color2="#B19EEF"
-              />
-            </div>
-            <Navbar />
-            <div className="main-content">
-              <AnimatedRoutes />
-            </div>
-            <Footer />
-          </div>
-        </SmoothScroll>
-      </ErrorBoundary>
+      <div className="app">
+        {/* <Cursor /> */}
+        <div style={{
+          width: '100vw',
+          height: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          zIndex: -1
+        }}>
+          <LiquidEther
+            colors={theme === 'dark'
+              ? ['#5227FF', '#FF9FFC', '#B19EEF']  // Dark mode colors
+              : ['#6366f1', '#a855f7', '#ec4899']} // Light mode colors (Vibrant: Indigo, Purple, Pink)
+            mouseForce={20}
+            cursorSize={100}
+            isViscous
+            viscous={10}
+            iterationsViscous={10}
+            iterationsPoisson={10}
+            resolution={0.2}
+            isBounce={false}
+            autoDemo
+            autoSpeed={0.5}
+            autoIntensity={2.2}
+            takeoverDuration={0.25}
+            autoResumeDelay={3000}
+            autoRampDuration={0.6}
+            color0={theme === 'dark' ? "#5227FF" : "#6366f1"}
+            color1={theme === 'dark' ? "#FF9FFC" : "#a855f7"}
+            color2={theme === 'dark' ? "#B19EEF" : "#ec4899"}
+          />
+        </div>
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
+        <div className="main-content">
+          <AnimatedRoutes />
+        </div>
+        <Footer />
+      </div>
     </Router>
   );
 }

@@ -23,11 +23,13 @@ class ErrorBoundary extends React.Component {
             return (
                 <div style={{
                     padding: '2rem',
-                    background: '#1a1a1a',
+                    background: '#500000', // Dark red for visibility
                     color: 'white',
                     height: '100vh',
                     overflow: 'auto',
-                    fontFamily: 'monospace'
+                    fontFamily: 'monospace',
+                    zIndex: 999999, // Ensure it's on top
+                    position: 'relative'
                 }}>
                     <h1>⚠️ Something went wrong.</h1>
                     <h2 style={{ color: '#ff4444' }}>{this.state.error && this.state.error.toString()}</h2>
