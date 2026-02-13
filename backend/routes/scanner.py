@@ -553,7 +553,49 @@ def _perform_scan():
         
         for e_type, ModelClass in task_configs:
             print(f">>> [Scanner] Mode: {e_type}", flush=True)
-            # 1. DIRECT SCANNING (Higher priority/quality)
+            
+            # 1. SPECIALIZED AGGREGATION (High priority - LinkedIn, etc.)
+            from services.aggregation_service import AggregationService
+            agg_service = AggregationService()
+            
+            if e_type == 'internship':
+                print(">>> [Scanner] Running specialized LinkedIn internship scan...", flush=True)
+                linkedin_results = agg_service.scrape_linkedin_internships()
+                for res in linkedin_results:
+                    if ModelClass.query.filter_by(title=res['title'], company=res['company']).first():
+                        continue
+                    
+                    event_data = {
+                        'title': res['title'],
+                        'company': res['company'],
+                        'description': res.get('raw_text', '')[:500],
+                        'location': res.get('location', 'India'),
+                        'mode': 'Hybrid',
+                        'application_link': res['link'],
+                        'source': 'LinkedIn'
+                    }
+                    enriched = analyze_with_gemini(event_data)
+                    if enriched:
+                        entry = Internship(
+                            title=enriched['title'],
+                            company=enriched.get('company', 'Unknown'),
+                            description=enriched['description'],
+                            location=enriched['location'],
+                            mode=enriched['mode'],
+                            duration='3 months',
+                            deadline=enriched.get('deadline'),
+                            skills_required=enriched.get('skills_required', 'Programming'),
+                            application_link=enriched['application_link'],
+                            status='pending',
+                            source='LinkedIn'
+                        )
+                        db.session.add(entry)
+                        db.session.flush()
+                        create_notifications_for_event(e_type, entry.id, entry.title)
+                        new_interns += 1
+                        print(f">>> [Scanner] SAVED (LinkedIn): {entry.title}", flush=True)
+
+            # 2. DIRECT SCANNING (Source Crawling)
             for direct_url in DIRECT_SOURCES.get(e_type, []):
                 print(f">>> [Scanner] Direct Scan URL: {direct_url}", flush=True)
                 bulk_results = extract_bulk_from_page(direct_url, e_type)
@@ -577,13 +619,9 @@ def _perform_scan():
                         'source': source_name
                     }
                     
-                    # High-fidelity enrichment per individual event
                     enriched = analyze_with_gemini(event_data)
-                    if not enriched: 
-                        print(f">>> [Scanner] Enrichment rejected: {res['name']}", flush=True)
-                        continue
+                    if not enriched: continue
                     
-                    # Final Field Mapping
                     if e_type == 'hackathon':
                         entry = Hackathon(
                             title=enriched['title'],
@@ -618,8 +656,6 @@ def _perform_scan():
                     if e_type == 'hackathon': new_hacks += 1
                     else: new_interns += 1
                     print(f">>> [Scanner] SAVED: {entry.title}", flush=True)
-
-            # 2. GOOGLE SEARCH FALLBACK (Discovery)
             queries = get_dynamic_queries(e_type)
             print(f">>> [Scanner] Google Discovery queries for {e_type}: {len(queries)}", flush=True)
             for q in queries:

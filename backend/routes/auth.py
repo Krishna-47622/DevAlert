@@ -233,6 +233,38 @@ def update_profile():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@auth_bp.route('/profile/resume', methods=['PUT'])
+@jwt_required()
+def update_resume():
+    """Update user resume text"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+            
+        data = request.get_json()
+        if 'resume_text' in data:
+            user.resume_text = data['resume_text']
+        if 'resume_link' in data:
+            user.resume_link = data['resume_link']
+            
+        if not user.resume_text and not user.resume_link:
+            return jsonify({'error': 'Either resume_text or resume_link is required'}), 400
+            
+        user.resume_updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Resume updated successfully',
+            'resume_updated_at': user.resume_updated_at.isoformat(),
+            'resume_link': user.resume_link
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 # Email Verification Endpoints
 
 @auth_bp.route('/verify-email/<token>', methods=['GET'])

@@ -282,6 +282,28 @@ export default function Navbar() {
                                         </NavLink>
                                     </li>
                                     <li>
+                                        <NavLink to="/tracker" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                            {({ isActive }) => (
+                                                <>
+                                                    <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Tracker</span>
+                                                    {isActive && (
+                                                        <motion.div
+                                                            layoutId="navbar-pill"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                inset: 0,
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                borderRadius: '20px',
+                                                                zIndex: 1
+                                                            }}
+                                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                        />
+                                                    )}
+                                                </>
+                                            )}
+                                        </NavLink>
+                                    </li>
+                                    <li>
                                         <NavLink to="/settings" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
                                             {({ isActive }) => (
                                                 <>

@@ -41,6 +41,7 @@ export const authAPI = {
     login: (data) => api.post('/auth/login', data),
     getCurrentUser: () => api.get('/auth/me'),
     updateProfile: (data) => api.put('/auth/update-profile', data),
+    updateResume: (resumeText, resumeLink) => api.put('/auth/profile/resume', { resume_text: resumeText, resume_link: resumeLink }),
 
     // Email Verification
     verifyEmail: (token) => api.get(`/auth/verify-email/${token}`),
@@ -111,6 +112,15 @@ export const notificationsAPI = {
     getUnreadCount: () => api.get('/notifications/unread-count'),
     markAsRead: (id) => api.put(`/notifications/${id}/read`),
     markAllAsRead: () => api.put('/notifications/mark-all-read'),
+};
+
+// Tracker API
+export const trackerAPI = {
+    getAll: () => api.get('/tracker'),
+    add: (data) => api.post('/tracker/add', data),
+    update: (id, data) => api.patch(`/tracker/${id}`, data),
+    delete: (id) => api.delete(`/tracker/${id}`),
+    calculateMatch: (id) => api.post(`/tracker/${id}/match`),
 };
 
 export default api;

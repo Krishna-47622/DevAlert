@@ -57,6 +57,14 @@ def migrate_database():
         # Rate Limiting
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name_update_count INTEGER DEFAULT 0",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name_window_start TIMESTAMP",
+        
+        # Resume for AI Match Score
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_text TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_updated_at TIMESTAMP",
+
+        # Tracked Events Match Score
+        "ALTER TABLE tracked_events ADD COLUMN IF NOT EXISTS match_score INTEGER",
+        "ALTER TABLE tracked_events ADD COLUMN IF NOT EXISTS match_explanation TEXT",
     ]
     
     # SQLite doesn't support IF NOT EXISTS in ALTER TABLE, handle differently
@@ -77,6 +85,13 @@ def migrate_database():
             "theme_preference TEXT DEFAULT 'dark'",
             "full_name_update_count INTEGER DEFAULT 0",
             "full_name_window_start TIMESTAMP",
+            "resume_text TEXT",
+            "resume_updated_at TIMESTAMP",
+        ]
+
+        migrations_tracked_events_sqlite = [
+            "match_score INTEGER",
+            "match_explanation TEXT",
         ]
         
         with engine.connect() as conn:
@@ -95,6 +110,22 @@ def migrate_database():
                         print(f"⚠️  Column {column_name} might already exist or error: {e}")
                 else:
                     print(f"⏭️  Column {column_name} already exists, skipping")
+
+            # Handle tracked_events table
+            result = conn.execute(text("PRAGMA table_info(tracked_events)"))
+            existing_tracked_columns = [row[1] for row in result]
+            
+            for column_def in migrations_tracked_events_sqlite:
+                column_name = column_def.split()[0]
+                if column_name not in existing_tracked_columns:
+                    try:
+                        conn.execute(text(f"ALTER TABLE tracked_events ADD COLUMN {column_def}"))
+                        conn.commit()
+                        print(f"✅ Added column to tracked_events: {column_name}")
+                    except Exception as e:
+                        print(f"⚠️  Column {column_name} in tracked_events might already exist or error: {e}")
+                else:
+                    print(f"⏭️  Column {column_name} in tracked_events already exists, skipping")
             
             # Make password_hash nullable for OAuth users
             print("ℹ️  Note: SQLite doesn't support modifying column constraints easily.")

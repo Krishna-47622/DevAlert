@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { hackathonsAPI, internshipsAPI } from '../services/api';
+import { hackathonsAPI, internshipsAPI, trackerAPI, authAPI } from '../services/api';
 import Card, { CardHeader, CardBody, CardFooter } from '../components/Card';
 import Modal from '../components/Modal';
+import Popup from '../components/Popup';
 
 export default function ApplicantPage() {
     const navigate = useNavigate();
@@ -14,10 +15,13 @@ export default function ApplicantPage() {
     const [filter, setFilter] = useState({ type: 'all', location: '' });
     const [highlightedId, setHighlightedId] = useState(null);
     const [highlightedType, setHighlightedType] = useState(null);
+    const [popup, setPopup] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+    const [user, setUser] = useState(null);
     const highlightedCardRef = useRef(null);
 
     useEffect(() => {
         fetchOpportunities();
+        fetchUser();
     }, []);
 
     useEffect(() => {
@@ -50,6 +54,15 @@ export default function ApplicantPage() {
         }
     }, [opportunities, loading, highlightedId]);
 
+    const fetchUser = async () => {
+        try {
+            const response = await authAPI.getCurrentUser();
+            setUser(response.data);
+        } catch (error) {
+            console.error('Error fetching user:', error);
+        }
+    };
+
     const fetchOpportunities = async () => {
         try {
             const hackathonsResponse = await hackathonsAPI.getAll({ status: 'approved' });
@@ -73,6 +86,29 @@ export default function ApplicantPage() {
 
     const handleApply = (item) => {
         navigate(`/apply/${item.type}/${item.id}`);
+    };
+
+    const handleTrack = async (item, type) => {
+        try {
+            const response = await trackerAPI.add({
+                event_type: type,
+                event_id: item.id
+            });
+            setPopup({
+                isOpen: true,
+                title: 'Opportunity Tracked!',
+                message: response.data.message || 'Added to your career cockpit.',
+                type: 'success'
+            });
+        } catch (err) {
+            console.error('Error adding to tracker:', err);
+            setPopup({
+                isOpen: true,
+                title: 'Tracking Failed',
+                message: 'Failed to add to tracker. Please ensure you are logged in.',
+                type: 'error'
+            });
+        }
     };
 
     const filterOpportunities = () => {
@@ -159,20 +195,64 @@ export default function ApplicantPage() {
                                             {hackathon.prize_pool && <p><strong>Prize:</strong> {hackathon.prize_pool}</p>}
                                         </CardBody>
                                         <CardFooter>
-                                            <button
-                                                onClick={() => openModal(hackathon, 'hackathon')}
-                                                className="btn btn-secondary"
-                                                style={{ flex: 1 }}
-                                            >
-                                                View Details
-                                            </button>
-                                            <button
-                                                onClick={() => handleApply({ ...hackathon, type: 'hackathon' })}
-                                                className="btn btn-primary"
-                                                style={{ flex: 1 }}
-                                            >
-                                                Apply
-                                            </button>
+                                            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.5rem' }}>
+                                                <div style={{ display: 'flex', gap: '0.4rem', width: '100%' }}>
+                                                    <button
+                                                        onClick={() => openModal(hackathon, 'hackathon')}
+                                                        className="btn btn-secondary"
+                                                        style={{ flex: 1, padding: '0.4rem' }}
+                                                    >
+                                                        Details
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleTrack(hackathon, 'hackathon')}
+                                                        className="btn btn-outline"
+                                                        style={{ flex: 1, padding: '0.4rem', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
+                                                    >
+                                                        Track
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleApply({ ...hackathon, type: 'hackathon' })}
+                                                    className="btn btn-primary"
+                                                    style={{ width: '100%', padding: '0.5rem' }}
+                                                >
+                                                    Apply Now
+                                                </button>
+                                                {user && user.resume_text ? (
+                                                    <div className="ai-match-preview" style={{
+                                                        background: 'rgba(var(--primary-color-rgb), 0.1)',
+                                                        border: '1px dashed var(--primary-color)',
+                                                        borderRadius: '8px',
+                                                        padding: '0.5rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px',
+                                                        fontSize: '0.8rem',
+                                                        cursor: 'pointer'
+                                                    }} onClick={() => handleTrack(hackathon, 'hackathon')}>
+                                                        <span className="material-icons" style={{ fontSize: '18px', color: 'var(--primary-color)' }}>psychology</span>
+                                                        <span style={{ fontWeight: 600 }}>Track to see AI Match Score</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="ai-match-preview" style={{
+                                                        background: 'rgba(255, 255, 255, 0.05)',
+                                                        border: '1px solid #444',
+                                                        borderRadius: '8px',
+                                                        padding: '0.5rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px',
+                                                        fontSize: '0.8rem',
+                                                        opacity: 0.7
+                                                    }} onClick={() => navigate('/settings')}>
+                                                        <span className="material-icons" style={{ fontSize: '18px' }}>description</span>
+                                                        <span>Add Resume for AI Match</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </CardFooter>
                                     </Card>
                                 );
@@ -210,20 +290,64 @@ export default function ApplicantPage() {
                                             {internship.stipend && <p><strong>Stipend:</strong> {internship.stipend}</p>}
                                         </CardBody>
                                         <CardFooter>
-                                            <button
-                                                onClick={() => openModal(internship, 'internship')}
-                                                className="btn btn-secondary"
-                                                style={{ flex: 1 }}
-                                            >
-                                                View Details
-                                            </button>
-                                            <button
-                                                onClick={() => handleApply({ ...internship, type: 'internship' })}
-                                                className="btn btn-primary"
-                                                style={{ flex: 1 }}
-                                            >
-                                                Apply
-                                            </button>
+                                            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.5rem' }}>
+                                                <div style={{ display: 'flex', gap: '0.4rem', width: '100%' }}>
+                                                    <button
+                                                        onClick={() => openModal(internship, 'internship')}
+                                                        className="btn btn-secondary"
+                                                        style={{ flex: 1, padding: '0.4rem' }}
+                                                    >
+                                                        Details
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleTrack(internship, 'internship')}
+                                                        className="btn btn-outline"
+                                                        style={{ flex: 1, padding: '0.4rem', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
+                                                    >
+                                                        Track
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleApply({ ...internship, type: 'internship' })}
+                                                    className="btn btn-primary"
+                                                    style={{ width: '100%', padding: '0.5rem' }}
+                                                >
+                                                    Apply Now
+                                                </button>
+                                                {user && user.resume_text ? (
+                                                    <div className="ai-match-preview" style={{
+                                                        background: 'rgba(var(--primary-color-rgb), 0.1)',
+                                                        border: '1px dashed var(--primary-color)',
+                                                        borderRadius: '8px',
+                                                        padding: '0.5rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px',
+                                                        fontSize: '0.8rem',
+                                                        cursor: 'pointer'
+                                                    }} onClick={() => handleTrack(internship, 'internship')}>
+                                                        <span className="material-icons" style={{ fontSize: '18px', color: 'var(--primary-color)' }}>psychology</span>
+                                                        <span style={{ fontWeight: 600 }}>Track to see AI Match Score</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="ai-match-preview" style={{
+                                                        background: 'rgba(255, 255, 255, 0.05)',
+                                                        border: '1px solid #444',
+                                                        borderRadius: '8px',
+                                                        padding: '0.5rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px',
+                                                        fontSize: '0.8rem',
+                                                        opacity: 0.7
+                                                    }} onClick={() => navigate('/settings')}>
+                                                        <span className="material-icons" style={{ fontSize: '18px' }}>description</span>
+                                                        <span>Add Resume for AI Match</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </CardFooter>
                                     </Card>
                                 );
@@ -281,6 +405,14 @@ export default function ApplicantPage() {
                     </div>
                 )}
             </Modal>
+
+            <Popup
+                isOpen={popup.isOpen}
+                onClose={() => setPopup({ ...popup, isOpen: false })}
+                title={popup.title}
+                message={popup.message}
+                type={popup.type}
+            />
         </div>
     );
 }

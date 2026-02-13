@@ -18,6 +18,7 @@ from routes.admin import admin_bp
 from routes.scanner import scanner_bp, start_scheduler, stop_scheduler
 from routes.applications import applications_bp
 from routes.notifications import notifications_bp
+from routes.tracker import tracker_bp
 import atexit
 
 def create_app():
@@ -44,6 +45,7 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(applications_bp, url_prefix='/api/applications')
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+    app.register_blueprint(tracker_bp, url_prefix='/api/tracker')
     app.register_blueprint(scanner_bp, url_prefix='/api/scanner')
 
     # Create database tables FIRST
@@ -51,12 +53,41 @@ def create_app():
         db.create_all()
         print("Database tables ensured")
 
-    # Run Database Migrations (Auto-fix for Render)
+    # Run Database Migrations
     try:
-        from migrate_account_features import migrate_database
+        from sqlalchemy import text
         with app.app_context():
             print("🔄 Running automatic database migration...")
-            migrate_database()
+            # Columns to add for AI Match Score and other features
+            migration_configs = [
+                # users table
+                ("users", "resume_text", "TEXT"),
+                ("users", "resume_link", "VARCHAR(500)"),
+                ("users", "resume_updated_at", "DATETIME"),
+                ("users", "email_verified", "BOOLEAN DEFAULT FALSE"),
+                ("users", "two_factor_enabled", "BOOLEAN DEFAULT FALSE"),
+                
+                # tracked_events table
+                ("tracked_events", "match_score", "INTEGER"),
+                ("tracked_events", "match_explanation", "TEXT"),
+            ]
+            
+            for table, col, type_def in migration_configs:
+                try:
+                    # Check if column exists first for SQLite (PRAGMA table_info)
+                    if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+                        res = db.session.execute(text(f"PRAGMA table_info({table})")).fetchall()
+                        if not any(row[1] == col for row in res):
+                            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {type_def}"))
+                            db.session.commit()
+                            print(f"✅ Added column {col} to {table}")
+                    else:
+                        # For Postgres/MySQL, use IF NOT EXISTS if supported or just try-except
+                        db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {type_def}"))
+                        db.session.commit()
+                except Exception as col_e:
+                    print(f"ℹ️ Column {col} in {table} skipped or error: {col_e}")
+
             print("✅ Database migration finished")
     except Exception as e:
         print(f"⚠️ Automatic migration failed: {e}")

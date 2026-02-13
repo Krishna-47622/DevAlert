@@ -27,6 +27,11 @@ export default function AccountSettings() {
     const [emailVerificationLoading, setEmailVerificationLoading] = useState(false);
     const [emailVerificationMessage, setEmailVerificationMessage] = useState({ type: '', text: '' });
 
+    // Resume state
+    const [resumeText, setResumeText] = useState('');
+    const [resumeLink, setResumeLink] = useState('');
+    const [resumeLoading, setResumeLoading] = useState(false);
+
     // Popup State
     const [popup, setPopup] = useState({
         isOpen: false,
@@ -58,6 +63,8 @@ export default function AccountSettings() {
         try {
             const response = await authAPI.getCurrentUser();
             setUser(response.data);
+            setResumeText(response.data.resume_text || '');
+            setResumeLink(response.data.resume_link || '');
         } catch (err) {
             console.error('Failed to fetch user:', err);
         } finally {
@@ -155,6 +162,18 @@ export default function AccountSettings() {
         }
     };
 
+    const handleSaveResume = async () => {
+        setResumeLoading(true);
+        try {
+            await authAPI.updateResume(resumeText, resumeLink);
+            showPopup('Success', 'Resume updated successfully! AI Match Scores will now be more accurate.', 'success');
+        } catch (err) {
+            showPopup('Error', err.response?.data?.error || 'Failed to update resume', 'error');
+        } finally {
+            setResumeLoading(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="container" style={{ paddingTop: '6rem', textAlign: 'center' }}>
@@ -178,7 +197,7 @@ export default function AccountSettings() {
 
                 {/* Tab Navigation */}
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '2px solid var(--color-border)' }}>
-                    {['profile', 'security', '2fa'].map(tab => (
+                    {['profile', 'resume', 'security', '2fa'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -193,7 +212,7 @@ export default function AccountSettings() {
                                 transition: 'all 0.3s ease'
                             }}
                         >
-                            {tab === 'profile' ? 'Profile' : tab === 'security' ? 'Security' : '2FA'}
+                            {tab === 'profile' ? 'Profile' : tab === 'resume' ? 'Resume' : tab === 'security' ? 'Security' : '2FA'}
                         </button>
                     ))}
                 </div>
@@ -278,8 +297,6 @@ export default function AccountSettings() {
                                     </p>
                                 </div>
 
-
-
                                 <div>
                                     <label className="form-label">Email</label>
                                     <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text)' }}>{user?.email}</p>
@@ -319,6 +336,57 @@ export default function AccountSettings() {
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Resume Tab */}
+                {activeTab === 'resume' && (
+                    <div className="card">
+                        <div className="card-header">
+                            <h2>AI Resume Management</h2>
+                        </div>
+                        <div className="card-body">
+                            <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                                Paste your resume or a summary of your skills and experience.
+                                Our AI uses this to calculate how well you match with internships and hackathons in your tracker.
+                            </p>
+                            <div className="form-group">
+                                <label className="form-label">Resume Text</label>
+                                <textarea
+                                    className="form-input"
+                                    style={{ minHeight: '300px', resize: 'vertical', fontFamily: 'inherit', lineHeight: '1.5', fontSize: '0.9rem' }}
+                                    value={resumeText}
+                                    onChange={(e) => setResumeText(e.target.value)}
+                                    placeholder="Paste your full resume here (Contact Info, Experience, Education, Skills)..."
+                                />
+                            </div>
+                            <div className="form-group" style={{ marginTop: '1.5rem' }}>
+                                <label className="form-label">Resume Link (Public URL)</label>
+                                <input
+                                    type="url"
+                                    className="form-input"
+                                    value={resumeLink}
+                                    onChange={(e) => setResumeLink(e.target.value)}
+                                    placeholder="https://drive.google.com/your-resume.pdf"
+                                />
+                                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: '0.5rem' }}>
+                                    Provide a public link to your resume (Drive, Dropbox, Personal Website).
+                                    Our AI will attempt to read this link for match analysis.
+                                </p>
+                            </div>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleSaveResume}
+                                disabled={resumeLoading}
+                                style={{ marginTop: '1rem' }}
+                            >
+                                {resumeLoading ? <span className="loading"></span> : 'Save Resume'}
+                            </button>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: '1rem' }}>
+                                <span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>lock</span>
+                                Your resume data is stored securely and only used for match score calculations.
+                            </p>
                         </div>
                     </div>
                 )}

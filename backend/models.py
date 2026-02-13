@@ -45,6 +45,11 @@ class User(db.Model):
     full_name_update_count = db.Column(db.Integer, default=0)
     full_name_window_start = db.Column(db.DateTime, nullable=True)
     
+    # Resume for AI Match Score
+    resume_text = db.Column(db.Text, nullable=True)
+    resume_link = db.Column(db.String(500), nullable=True)
+    resume_updated_at = db.Column(db.DateTime, nullable=True)
+    
     # Relationships
     applications = db.relationship('Application', backref='user', lazy=True, cascade='all, delete-orphan')
     
@@ -75,6 +80,9 @@ class User(db.Model):
             'full_name': self.full_name,
             'display_name': self.display_name,
             'theme_preference': self.theme_preference,
+            'resume_text': self.resume_text,
+            'resume_link': self.resume_link,
+            'resume_updated_at': self.resume_updated_at.isoformat() if self.resume_updated_at else None,
             'created_at': self.created_at.isoformat()
         }
 
@@ -252,3 +260,65 @@ class Notification(db.Model):
             'is_read': self.is_read,
             'created_at': self.created_at.isoformat()
         }
+class TrackedEvent(db.Model):
+    """Model for tracking user interest and application status for opportunities"""
+    __tablename__ = 'tracked_events'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    event_type = db.Column(db.String(20), nullable=False)  # 'hackathon' or 'internship'
+    event_id = db.Column(db.Integer, nullable=False)
+    
+    # Status: Saved, To Apply, Applied, Interviewing, Offered, Rejected
+    status = db.Column(db.String(20), default='Saved')
+    notes = db.Column(db.Text, nullable=True)
+    
+    # AI Match Score
+    match_score = db.Column(db.Integer, nullable=True) # 0-100
+    match_explanation = db.Column(db.Text, nullable=True)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship to user
+    user_rel = db.relationship('User', backref=db.backref('tracked_items', lazy=True))
+
+    def to_dict(self):
+        """Convert to dictionary with event details"""
+        data = {
+            'id': self.id,
+            'user_id': self.user_id,
+            'event_type': self.event_type,
+            'event_id': self.event_id,
+            'status': self.status,
+            'notes': self.notes,
+            'match_score': self.match_score,
+            'match_explanation': self.match_explanation,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
+        
+        # Add event details
+        try:
+            if self.event_type == 'hackathon':
+                event = Hackathon.query.get(self.event_id)
+                if event:
+                    data['event_details'] = {
+                        'title': event.title,
+                        'organizer': event.organizer,
+                        'deadline': event.deadline.isoformat() if event.deadline else None,
+                        'link': event.registration_link
+                    }
+            else:
+                event = Internship.query.get(self.event_id)
+                if event:
+                    data['event_details'] = {
+                        'title': event.title,
+                        'company': event.company,
+                        'deadline': event.deadline.isoformat() if event.deadline else None,
+                        'link': event.application_link
+                    }
+        except Exception as e:
+            data['event_details'] = {'error': str(e)}
+            
+        return data

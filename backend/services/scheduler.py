@@ -17,25 +17,13 @@ class OpportunityScheduler:
             print("AI scanner is disabled. Scheduler will not start.")
             return
         
-        # Schedule daily scan at 9 AM
+        # Schedule hourly scan
         self.scheduler.add_job(
             func=self._run_scan,
-            trigger='cron',
-            hour=9,
-            minute=0,
-            id='daily_scan',
-            name='Daily opportunity scan',
-            replace_existing=True
-        )
-        
-        # Optional: Schedule additional scan at 6 PM
-        self.scheduler.add_job(
-            func=self._run_scan,
-            trigger='cron',
-            hour=18,
-            minute=0,
-            id='evening_scan',
-            name='Evening opportunity scan',
+            trigger='interval',
+            hours=1,
+            id='hourly_scan',
+            name='Hourly opportunity aggregation',
             replace_existing=True
         )
         

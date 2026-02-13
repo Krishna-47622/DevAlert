@@ -20,6 +20,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import AccountSettings from './pages/AccountSettings';
+import Tracker from './pages/Tracker';
 import AboutPage from './pages/AboutPage';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -112,6 +113,14 @@ function AnimatedRoutes() {
           element={
             <PrivateRoute>
               <PageTransition><AccountSettings /></PageTransition>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/tracker"
+          element={
+            <PrivateRoute>
+              <PageTransition><Tracker /></PageTransition>
             </PrivateRoute>
           }
         />
