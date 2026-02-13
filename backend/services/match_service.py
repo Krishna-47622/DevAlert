@@ -83,6 +83,45 @@ class MatchService:
         # REST API Fallback (Bypasses SDK issues on Python 3.14)
         return self._calculate_score_rest(prompt, resume_text, opportunity_details)
 
+
+    def generate_content(self, prompt):
+        """Public method to generate content using the configured model (SDK or REST)"""
+        if self.sdk_ready:
+            try:
+                response = self.model.generate_content(prompt)
+                return response.text
+            except Exception as e:
+                print(f"SDK Generation failed: {e}. Trying REST fallback...")
+        
+        # REST Fallback for generation
+        return self._generate_content_rest(prompt)
+
+    def _generate_content_rest(self, prompt):
+        """Direct REST call for content generation"""
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={self.api_key}"
+        headers = {'Content-Type': 'application/json'}
+        payload = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }]
+        }
+        
+        try:
+            print(f"DEBUG: Attempting REST Generation")
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            if response.status_code != 200:
+                print(f"Gemini REST Error {response.status_code}: {response.text}")
+                return ""
+            
+            data = response.json()
+            try:
+                return data['candidates'][0]['content']['parts'][0]['text']
+            except (KeyError, IndexError):
+                return ""
+        except Exception as e:
+            print(f"REST Generation failed: {e}")
+            return ""
+
     def _calculate_score_rest(self, prompt, resume_text, opportunity_details):
         """Direct REST call to Gemini API"""
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={self.api_key}"

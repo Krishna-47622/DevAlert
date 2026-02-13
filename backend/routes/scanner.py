@@ -23,44 +23,16 @@ scan_results = []
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY', '')
 GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID', '')
 
+from services.match_service import get_match_service
+
 def safe_generate_content(prompt):
-    """Resilient content generation that tries multiple model variants to avoid 404s"""
+    """Resilient content generation using MatchService (handles SDK/REST fallback)"""
     try:
-        import google.generativeai as genai
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key: 
-            print(">>> [Scanner] GEMINI_API_KEY missing - skipping AI step.", flush=True)
-            return None
-        
-        genai.configure(api_key=api_key)
-        
-        # Diagnostic: Check library version once
-        try:
-            sdk_version = getattr(genai, "__version__", "unknown")
-            print(f">>> [Scanner] genai SDK version: {sdk_version}", flush=True)
-        except:
-            pass
-            
-        # Try these identifiers in order
-        # Flash is preferred, Pro is fallback
-        model_variants = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro']
-        
-        for m_name in model_variants:
-            try:
-                print(f">>> [Scanner] Attempting generation with {m_name}...", flush=True)
-                model = genai.GenerativeModel(m_name)
-                # Reduced timeout to avoid hanging the thread if one variant is slow/unresponsive
-                response = model.generate_content(prompt)
-                if response and response.text:
-                    return response.text
-            except Exception as e:
-                print(f">>> [Scanner] Model {m_name} failed: {e}", flush=True)
-                continue
-                
+        service = get_match_service()
+        return service.generate_content(prompt)
     except Exception as e:
         print(f"❌ [Scanner] safe_generate_content fatal error: {e}", flush=True)
-        
-    return None
+        return None
 
 def check_link_validity(url):
     """Perform a HEAD request to check if a link is still alive with browser-like headers"""
@@ -132,43 +104,38 @@ def create_notifications_for_event(event_type, event_id, title):
         print(f"❌ Error creating notifications: {str(e)}")
         db.session.rollback()
 
+from services.scanner_service import get_scanner_service
+
 def google_search(query, num_results=10):
     """
-    Perform Google Custom Search
-    Returns list of search results with title, link, and snippet
+    Perform Google Custom Search using AIScannerService (with Mock Fallback)
+    Returns list of search results with title, link, snippet, and source
     """
-    if not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
-        if not GOOGLE_CSE_ID:
-            print(">>> [Scanner] Google Search Engine ID (GOOGLE_CSE_ID) missing. Using fallback scraper.", flush=True)
-        return get_fallback_results(query)
-    
     try:
-        url = "https://www.googleapis.com/customsearch/v1"
-        params = {
-            'key': GOOGLE_API_KEY,
-            'cx': GOOGLE_CSE_ID,
-            'q': query,
-            'num': num_results
-        }
+        service = get_scanner_service()
+        if not service:
+            print(">>> [Scanner] Service unavailable, using scraper fallback.", flush=True)
+            return get_fallback_results(query)
         
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
+        # Uses the service's robust search (Mock Data if API Blocked)
+        items = service.search_google(query, num_results)
         
-        data = response.json()
+        # If service returns empty list (and didn't fallback internally?), force fallback here
+        if not items:
+            return get_fallback_results(query)
+            
         results = []
-        
-        if 'items' in data:
-            for item in data['items']:
-                results.append({
-                    'title': item.get('title', ''),
-                    'link': item.get('link', ''),
-                    'snippet': item.get('snippet', ''),
-                    'source': extract_domain(item.get('link', ''))
-                })
-        
+        for item in items:
+            results.append({
+                'title': item.get('title', ''),
+                'link': item.get('link', ''),
+                'snippet': item.get('snippet', ''),
+                'source': extract_domain(item.get('link', ''))
+            })
+            
         return results
     except Exception as e:
-        print(f"❌ Google Search error: {str(e)}")
+        print(f"❌ Google Search wrapper error: {str(e)}", flush=True)
         return get_fallback_results(query)
 
 def extract_domain(url):
