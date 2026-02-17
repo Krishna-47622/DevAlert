@@ -131,60 +131,75 @@ class MatchService:
             return ""
 
     def _calculate_score_rest(self, prompt, resume_text, opportunity_details):
-        """Direct REST call to Gemini API - Tries multiple models"""
+        """Direct REST call to Gemini API - Tries multiple models and API versions"""
         models_to_try = [
             'gemini-1.5-flash',
             'gemini-1.5-flash-001',
             'gemini-1.5-flash-latest',
+            'gemini-1.5-pro',
+            'gemini-1.5-pro-latest',
             'gemini-pro',
             'gemini-1.0-pro'
         ]
 
         last_error = None
+        current_key = self.api_key
+        masked_key = f"{current_key[:10]}..." if current_key else "None"
         
-        for model_name in models_to_try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
-            headers = {'Content-Type': 'application/json'}
-            payload = {
-                "contents": [{
-                    "parts": [{"text": prompt}]
-                }]
-            }
-            
-            print(f"DEBUG: Attempting REST Match with Model: {model_name}")
-            try:
-                response = requests.post(url, headers=headers, json=payload, timeout=30)
+        # Try both v1beta and v1
+        api_versions = ['v1beta', 'v1']
+
+        for version in api_versions:
+            for model_name in models_to_try:
+                url = f"https://generativelanguage.googleapis.com/{version}/models/{model_name}:generateContent?key={self.api_key}"
+                headers = {'Content-Type': 'application/json'}
+                payload = {
+                    "contents": [{
+                        "parts": [{"text": prompt}]
+                    }]
+                }
                 
-                if response.status_code == 404:
-                    print(f"Model {model_name} not found (404). Trying next model...")
-                    last_error = f"Model {model_name} returned 404 Not Found"
-                    continue
-                
-                print(f"DEBUG: Response Status: {response.status_code}")
-                if response.status_code != 200:
-                    error_msg = f"Gemini REST Error {response.status_code}: {response.text}"
-                    print(error_msg)
-                    last_error = error_msg
-                    response.raise_for_status()
-                
-                data = response.json()
-                
-                # Extract text from Gemini REST response structure
+                print(f"DEBUG: Attempting REST Match with Model: {model_name} ({version})")
                 try:
-                    ai_text = data['candidates'][0]['content']['parts'][0]['text']
-                    return self._parse_ai_response(ai_text)
-                except (KeyError, IndexError) as e:
-                    print(f"REST Response parse error: {e}. Raw Data: {data}")
-                    return self._calculate_fallback_score(resume_text, opportunity_details)
+                    response = requests.post(url, headers=headers, json=payload, timeout=30)
                     
-            except Exception as e:
-                print(f"REST API Match failed with {model_name}: {e}")
-                last_error = e
-                continue
+                    if response.status_code == 404:
+                        print(f"Model {model_name} ({version}) not found (404).")
+                        last_error = f"404 Not Found: {model_name} ({version})"
+                        continue
+                    
+                    if response.status_code == 400:
+                         print(f"Bad Request for {model_name} ({version}): {response.text}")
+                         last_error = f"400 Bad Request: {model_name}"
+                         # Don't continue if it's a bad request (key/parameter issue), usually fatal unless model specific
+                         # But we'll try others just in case
+                         continue
+
+                    print(f"DEBUG: Response Status: {response.status_code}")
+                    if response.status_code != 200:
+                        error_msg = f"Gemini Error {response.status_code}: {response.text}"
+                        print(error_msg)
+                        last_error = error_msg
+                        response.raise_for_status()
+                    
+                    data = response.json()
+                    
+                    # Extract text
+                    try:
+                        ai_text = data['candidates'][0]['content']['parts'][0]['text']
+                        return self._parse_ai_response(ai_text)
+                    except (KeyError, IndexError) as e:
+                        print(f"Response parse error: {e}. Raw Data: {data}")
+                        return self._calculate_fallback_score(resume_text, opportunity_details, error_details="Parse Error")
+                        
+                except Exception as e:
+                    print(f"Match failed with {model_name}: {e}")
+                    last_error = f"{e}"
+                    continue
         
         # If all models fail
         print(f"All Gemini models failed. Last error: {last_error}")
-        return self._calculate_fallback_score(resume_text, opportunity_details, error_details=str(last_error))
+        return self._calculate_fallback_score(resume_text, opportunity_details, error_details=f"{last_error} (Key: {masked_key})")
 
     def _parse_ai_response(self, text):
         """Extract score and explanation from AI JSON string"""
