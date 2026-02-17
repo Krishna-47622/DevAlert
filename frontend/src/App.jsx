@@ -22,6 +22,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import AccountSettings from './pages/AccountSettings';
 import Tracker from './pages/Tracker';
 import AboutPage from './pages/AboutPage';
+import HelpPage from './pages/HelpPage';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
@@ -60,6 +61,7 @@ function AnimatedRoutes() {
         <Route path="/reset-password/:token" element={<PageTransition><ResetPassword /></PageTransition>} />
         <Route path="/verify-email/:token" element={<PageTransition><VerifyEmail /></PageTransition>} />
         <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
+        <Route path="/help" element={<PageTransition><HelpPage /></PageTransition>} />
         <Route
           path="/"
           element={

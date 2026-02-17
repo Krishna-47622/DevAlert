@@ -117,6 +117,19 @@ export default function AdminPage() {
         }
     };
 
+    const handleAutoApprove = async () => {
+        showPopup('Confirm Auto-Approve', 'Are you sure you want to approve the 5 oldest pending hackathons and internships?', 'confirm', async () => {
+            try {
+                const response = await adminAPI.autoApprove();
+                fetchPending();
+                showPopup('Success', response.data.message, 'success');
+            } catch (error) {
+                console.error('Error auto-approving:', error);
+                showPopup('Error', 'Failed to auto-approve items.', 'error');
+            }
+        });
+    };
+
     const activeTabStyle = {
         cursor: 'pointer',
         userSelect: 'none'
