@@ -156,26 +156,23 @@ class MatchService:
         return ""
 
     def _calculate_score_rest(self, prompt, resume_text, opportunity_details):
-        """Direct REST call to Gemini API - Tries multiple models and API versions"""
+        """Direct REST call to Gemini API - Only tries v1beta (Gemini 2.0 doesn't support v1)"""
         models_to_try = [
             'gemini-2.0-flash',
             'gemini-2.0-flash-lite',
-            'gemini-1.5-flash',
-            'gemini-1.5-flash-latest',
-            'gemini-1.5-pro',
-            'gemini-pro'
+            'gemini-flash-latest',
+            'gemini-pro-latest'
         ]
 
         last_error = None
         current_key = self.api_key
         masked_key = f"{current_key[:10]}..." if current_key else "None"
         
-        # Try both v1beta and v1
-        api_versions = ['v1beta', 'v1']
+        # Only use v1beta (v1 doesn't work with newer models)
+        version = 'v1beta'
 
-        for version in api_versions:
-            for model_name in models_to_try:
-                url = f"https://generativelanguage.googleapis.com/{version}/models/{model_name}:generateContent?key={self.api_key}"
+        for model_name in models_to_try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
                 headers = {'Content-Type': 'application/json'}
                 payload = {
                     "contents": [{
@@ -183,18 +180,18 @@ class MatchService:
                     }]
                 }
                 
-                print(f"DEBUG: Attempting REST Match with Model: {model_name} ({version})")
+                print(f"DEBUG: Attempting REST Match with Model: {model_name} (v1beta)")
                 try:
                     response = requests.post(url, headers=headers, json=payload, timeout=30)
                     
                     if response.status_code == 404:
-                        print(f"Model {model_name} ({version}) not found (404).")
-                        last_error = f"404 Not Found: {model_name} ({version})"
+                        print(f"Model {model_name} (v1beta) not found (404).")
+                        last_error = f"404 Not Found: {model_name} (v1beta)"
                         continue
                     
                     if response.status_code == 400:
-                         print(f"Bad Request for {model_name} ({version}): {response.text}")
-                         last_error = f"400 Bad Request: {model_name}"
+                         print(f"Bad Request for {model_name} (v1beta): {response.text}")
+                         last_error = f"400 Bad Request: {model_name} (v1beta)"
                          # Don't continue if it's a bad request (key/parameter issue), usually fatal unless model specific
                          # But we'll try others just in case
                          continue
