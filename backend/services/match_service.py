@@ -24,7 +24,7 @@ class MatchService:
         if SDK_AVAILABLE and self.enabled:
             try:
                 genai.configure(api_key=api_key)
-                self.model = genai.GenerativeModel('gemini-flash-latest')
+                self.model = genai.GenerativeModel('gemini-1.5-flash')
                 self.sdk_ready = True
             except Exception as e:
                 print(f"Error initializing Match SDK: {e}")
@@ -98,7 +98,7 @@ class MatchService:
 
     def _generate_content_rest(self, prompt):
         """Direct REST call for content generation"""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={self.api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
         headers = {'Content-Type': 'application/json'}
         payload = {
             "contents": [{
@@ -124,7 +124,7 @@ class MatchService:
 
     def _calculate_score_rest(self, prompt, resume_text, opportunity_details):
         """Direct REST call to Gemini API"""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={self.api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
         headers = {'Content-Type': 'application/json'}
         payload = {
             "contents": [{
