@@ -18,8 +18,10 @@ class MatchService:
     
     def __init__(self, api_key):
         """Initialize Gemini client or prepare for REST API calls"""
-        self.api_key = api_key
-        self.enabled = bool(api_key)
+        self.api_key = api_key.strip() if api_key else None
+        self.enabled = bool(self.api_key)
+        
+        print(f"DEBUG: MatchService Init. Key Length: {len(self.api_key) if self.api_key else 0}. Key Prefix: {self.api_key[:5] if self.api_key else 'None'}")
         
         if SDK_AVAILABLE and self.enabled:
             try:
