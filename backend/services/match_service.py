@@ -25,7 +25,15 @@ class MatchService:
         
         if SDK_AVAILABLE and self.enabled:
             try:
-                genai.configure(api_key=api_key)
+                genai.configure(api_key=self.api_key)
+                # DEBUG: List available models
+                print("DEBUG: Listing available models via SDK...")
+                try:
+                    for m in genai.list_models():
+                        print(f" - Found Model: {m.name}")
+                except Exception as e:
+                    print(f"DEBUG: Failed to list models via SDK: {e}")
+
                 # Try to initialize with the most likely working model
                 self.model = genai.GenerativeModel('gemini-1.5-flash-001')
                 self.sdk_ready = True
@@ -34,6 +42,20 @@ class MatchService:
                 self.sdk_ready = False
         else:
             self.sdk_ready = False
+            # DEBUG: List models via REST if SDK not used or verified
+            if self.enabled:
+                try:
+                    print("DEBUG: Listing available models via REST...")
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={self.api_key}"
+                    resp = requests.get(url, timeout=10)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        for m in data.get('models', []):
+                            print(f" - REST Found Model: {m.get('name')}")
+                    else:
+                        print(f"DEBUG: REST List Models failed ({resp.status_code}): {resp.text}")
+                except Exception as e:
+                    print(f"DEBUG: REST List Models Exception: {e}")
 
     def calculate_score(self, resume_text, opportunity_details, resume_link=None):
         """
