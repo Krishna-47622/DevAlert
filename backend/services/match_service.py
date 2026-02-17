@@ -179,7 +179,7 @@ class MatchService:
         
         # If all models fail
         print(f"All Gemini models failed. Last error: {last_error}")
-        return self._calculate_fallback_score(resume_text, opportunity_details)
+        return self._calculate_fallback_score(resume_text, opportunity_details, error_details=str(last_error))
 
     def _parse_ai_response(self, text):
         """Extract score and explanation from AI JSON string"""
@@ -203,7 +203,7 @@ class MatchService:
             print(f"Error parsing AI response: {e}. Raw text: {text[:100]}...")
             return 0, "Error format in AI response."
 
-    def _calculate_fallback_score(self, resume_text, opportunity_details):
+    def _calculate_fallback_score(self, resume_text, opportunity_details, error_details=None):
         """Simple keyword matching fallback when both SDK and REST fail"""
         if not resume_text:
             return 0, "Wait! We couldn't read your resume from that link. Could you paste the text instead?"
@@ -222,7 +222,12 @@ class MatchService:
         keywords.update(found_keywords)
         
         if not keywords:
-            return 50, "AI matching fell back to basic scoring. This usually happens if your GEMINI_API_KEY is missing, invalid, or has no quota left. Please check your backend .env file."
+            msg = "AI matching fell back to basic scoring. "
+            if error_details:
+                msg += f" (Error: {error_details[:100]}...)"
+            else:
+                msg += "This usually happens if your GEMINI_API_KEY is missing or invalid."
+            return 50, msg
 
         matches = [k for k in keywords if k in resume_text]
         score = int((len(matches) / len(keywords)) * 100) if keywords else 50
@@ -230,9 +235,16 @@ class MatchService:
         # Cap score for fallback
         score = min(max(score, 30), 90)
         
-        explanation = f"Using keyword-based analysis. Matched skills: {', '.join(matches[:3])}. (AI failed to connect; check your GEMINI_API_KEY)"
+        explanation = f"Using keyword-based analysis. Matched skills: {', '.join(matches[:3])}."
+        if error_details:
+            explanation += f" (AI Error: {error_details[:100]}... Check API Key/Quota)"
+        else:
+            explanation += " (AI failed to connect; check your GEMINI_API_KEY)"
+            
         if not matches:
-            explanation = "No direct keyword matches found. (AI failed to connect; ensure GEMINI_API_KEY is set in backend/.env)"
+            explanation = "No direct keyword matches found. "
+            if error_details:
+                explanation += f"(AI Error: {error_details[:100]}...)"
             
         return score, explanation
 
