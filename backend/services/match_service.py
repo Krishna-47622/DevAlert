@@ -24,7 +24,8 @@ class MatchService:
         if SDK_AVAILABLE and self.enabled:
             try:
                 genai.configure(api_key=api_key)
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
+                # Try to initialize with the most likely working model
+                self.model = genai.GenerativeModel('gemini-1.5-flash-001')
                 self.sdk_ready = True
             except Exception as e:
                 print(f"Error initializing Match SDK: {e}")
@@ -97,8 +98,15 @@ class MatchService:
         return self._generate_content_rest(prompt)
 
     def _generate_content_rest(self, prompt):
-        """Direct REST call for content generation"""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+        """Direct REST call for content generation - Tries multiple models"""
+        models_to_try = [
+            'gemini-1.5-flash-001',
+            'gemini-1.5-flash',
+            'gemini-pro'
+        ]
+        
+        for model_name in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
         headers = {'Content-Type': 'application/json'}
         payload = {
             "contents": [{
@@ -123,37 +131,55 @@ class MatchService:
             return ""
 
     def _calculate_score_rest(self, prompt, resume_text, opportunity_details):
-        """Direct REST call to Gemini API"""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
-        headers = {'Content-Type': 'application/json'}
-        payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }]
-        }
+        """Direct REST call to Gemini API - Tries multiple models"""
+        models_to_try = [
+            'gemini-1.5-flash-001',
+            'gemini-1.5-flash',
+            'gemini-pro'
+        ]
+
+        last_error = None
         
-        print(f"DEBUG: Attempting REST Match with URL: {url}")
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
-            print(f"DEBUG: Response Status: {response.status_code}")
-            if response.status_code != 200:
-                print(f"Gemini REST Error {response.status_code}: {response.text}")
-            response.raise_for_status()
-            data = response.json()
+        for model_name in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+            headers = {'Content-Type': 'application/json'}
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }]
+            }
             
-            # Extract text from Gemini REST response structure
+            print(f"DEBUG: Attempting REST Match with Model: {model_name}")
             try:
-                ai_text = data['candidates'][0]['content']['parts'][0]['text']
-                return self._parse_ai_response(ai_text)
-            except (KeyError, IndexError) as e:
-                print(f"REST Response parse error: {e}. Raw Data: {data}")
-                return self._calculate_fallback_score(resume_text, opportunity_details)
+                response = requests.post(url, headers=headers, json=payload, timeout=30)
                 
-        except Exception as e:
-            print(f"REST API Match failed: {e}")
-            if 'response' in locals() and hasattr(response, 'text'):
-                 print(f"Response text: {response.text}")
-            return self._calculate_fallback_score(resume_text, opportunity_details)
+                if response.status_code == 404:
+                    print(f"Model {model_name} not found (404). Trying next model...")
+                    continue
+                
+                print(f"DEBUG: Response Status: {response.status_code}")
+                if response.status_code != 200:
+                    print(f"Gemini REST Error {response.status_code}: {response.text}")
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                # Extract text from Gemini REST response structure
+                try:
+                    ai_text = data['candidates'][0]['content']['parts'][0]['text']
+                    return self._parse_ai_response(ai_text)
+                except (KeyError, IndexError) as e:
+                    print(f"REST Response parse error: {e}. Raw Data: {data}")
+                    return self._calculate_fallback_score(resume_text, opportunity_details)
+                    
+            except Exception as e:
+                print(f"REST API Match failed with {model_name}: {e}")
+                last_error = e
+                continue
+        
+        # If all models fail
+        print(f"All Gemini models failed. Last error: {last_error}")
+        return self._calculate_fallback_score(resume_text, opportunity_details)
 
     def _parse_ai_response(self, text):
         """Extract score and explanation from AI JSON string"""
