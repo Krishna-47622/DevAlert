@@ -34,8 +34,8 @@ class MatchService:
                 except Exception as e:
                     print(f"DEBUG: Failed to list models via SDK: {e}")
 
-                # Try to initialize with the most likely working model
-                self.model = genai.GenerativeModel('gemini-1.5-flash-001')
+                # Try to initialize with the most likely working model (Updated to 2.0)
+                self.model = genai.GenerativeModel('gemini-2.0-flash')
                 self.sdk_ready = True
             except Exception as e:
                 print(f"Error initializing Match SDK: {e}")
@@ -124,46 +124,46 @@ class MatchService:
     def _generate_content_rest(self, prompt):
         """Direct REST call for content generation - Tries multiple models"""
         models_to_try = [
-            'gemini-1.5-flash-001',
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
             'gemini-1.5-flash',
             'gemini-pro'
         ]
         
         for model_name in models_to_try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
-        headers = {'Content-Type': 'application/json'}
-        payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }]
-        }
-        
-        try:
-            print(f"DEBUG: Attempting REST Generation")
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
-            if response.status_code != 200:
-                print(f"Gemini REST Error {response.status_code}: {response.text}")
-                return ""
+            headers = {'Content-Type': 'application/json'}
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }]
+            }
             
-            data = response.json()
             try:
-                return data['candidates'][0]['content']['parts'][0]['text']
-            except (KeyError, IndexError):
-                return ""
-        except Exception as e:
-            print(f"REST Generation failed: {e}")
-            return ""
+                print(f"DEBUG: Attempting REST Generation with {model_name}")
+                response = requests.post(url, headers=headers, json=payload, timeout=30)
+                if response.status_code != 200:
+                    continue
+                
+                data = response.json()
+                try:
+                    return data['candidates'][0]['content']['parts'][0]['text']
+                except (KeyError, IndexError):
+                    continue
+            except Exception as e:
+                print(f"REST Generation failed: {e}")
+                continue
+        return ""
 
     def _calculate_score_rest(self, prompt, resume_text, opportunity_details):
         """Direct REST call to Gemini API - Tries multiple models and API versions"""
         models_to_try = [
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
             'gemini-1.5-flash',
-            'gemini-1.5-flash-001',
             'gemini-1.5-flash-latest',
             'gemini-1.5-pro',
-            'gemini-1.5-pro-latest',
-            'gemini-pro',
-            'gemini-1.0-pro'
+            'gemini-pro'
         ]
 
         last_error = None
