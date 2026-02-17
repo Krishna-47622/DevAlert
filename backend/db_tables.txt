@@ -1,1 +1,1 @@
-[('users',), ('hackathons',), ('internships',), ('applications',), ('notifications',)]
+[('users',), ('applications',), ('hackathons',), ('internships',), ('notifications',), ('tracked_events',)]

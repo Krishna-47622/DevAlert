@@ -158,13 +158,23 @@ class MatchService:
     def _parse_ai_response(self, text):
         """Extract score and explanation from AI JSON string"""
         try:
-            json_match = re.search(r'\{.*\}', text, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
-                return data.get('score', 0), data.get('explanation', "No explanation provided.")
-            return 0, "Failed to parse AI response."
+            # Remove markdown code blocks if present
+            text = re.sub(r'```(?:json)?', '', text)
+            
+            # Find the start of the JSON object
+            start_index = text.find('{')
+            if start_index == -1:
+                return 0, "Failed to parse AI response (No JSON object found)."
+            
+            # Use raw_decode to parse the first valid JSON object starting at start_index
+            # This handles nested braces correctly and ignores trailing text
+            decoder = json.JSONDecoder()
+            data, _ = decoder.raw_decode(text[start_index:])
+            
+            return data.get('score', 0), data.get('explanation', "No explanation provided.")
+            
         except Exception as e:
-            print(f"Error parsing AI response: {e}")
+            print(f"Error parsing AI response: {e}. Raw text: {text[:100]}...")
             return 0, "Error format in AI response."
 
     def _calculate_fallback_score(self, resume_text, opportunity_details):

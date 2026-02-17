@@ -603,7 +603,16 @@ def oauth_callback(provider):
         
         # Redirect to OAuth callback page with token and user data
         from urllib.parse import urlencode, quote
-        user_data = quote(json.dumps(user.to_dict()))
+        
+        # Create a sanitized user dict for the URL to avoid "Request Line is too large"
+        # We exclude large fields like resume_text and match_explanation
+        user_dict = user.to_dict()
+        url_safe_user = {
+            k: v for k, v in user_dict.items() 
+            if k not in ['resume_text', 'resume_link', 'match_explanation', 'notes'] and v is not None
+        }
+        
+        user_data = quote(json.dumps(url_safe_user))
         params = urlencode({
             'token': access_token,
             'user': user_data
