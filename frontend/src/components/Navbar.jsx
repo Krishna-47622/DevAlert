@@ -187,6 +187,28 @@ export default function Navbar() {
                                             )}
                                         </NavLink>
                                     </li>
+                                    <li>
+                                        <NavLink to="/help" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
+                                            {({ isActive }) => (
+                                                <>
+                                                    <span style={{ position: 'relative', zIndex: 10, color: isActive ? 'var(--primary-color)' : 'inherit' }}>Help</span>
+                                                    {isActive && (
+                                                        <motion.div
+                                                            layoutId="navbar-pill"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                inset: 0,
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                borderRadius: '20px',
+                                                                zIndex: 1
+                                                            }}
+                                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                        />
+                                                    )}
+                                                </>
+                                            )}
+                                        </NavLink>
+                                    </li>
                                     {user.role === 'admin' && (
                                         <li>
                                             <NavLink to="/admin" className="nav-link" style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none' }}>
