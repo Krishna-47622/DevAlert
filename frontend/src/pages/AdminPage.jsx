@@ -499,40 +499,65 @@ export default function AdminPage() {
             {/* Pending Approvals Tab */}
             {activeTab === 'pending' && (
                 <div className="fade-in">
-                    <button
-                        onClick={handleSelectionCycle}
-                        style={{
-                            marginBottom: '1rem',
-                            padding: '0.75rem 1.5rem',
-                            background: selectionStage === 0 ? 'var(--color-bg-card)' :
-                                selectionStage === 1 ? 'var(--primary-color)' :
-                                    selectionStage === 2 ? '#6366f1' : // Indigo
-                                        selectionStage === 3 ? '#10b981' : // Success Green
-                                            '#f59e0b', // Warning Amber
-                            color: 'white',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: '12px',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            transition: 'all 0.3s ease',
-                            boxShadow: selectionStage > 0 ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none'
-                        }}
-                    >
-                        <span className="material-icons">
-                            {selectionStage === 0 ? 'filter_list' :
-                                selectionStage === 1 ? 'check_box_outline_blank' :
-                                    selectionStage === 2 ? 'done_all' :
-                                        selectionStage === 3 ? 'check_circle' : 'cancel'}
-                        </span>
-                        {selectionStage === 0 ? 'Select' :
-                            selectionStage === 1 ? 'Select (Manual)' :
-                                selectionStage === 2 ? 'Select (All)' :
-                                    selectionStage === 3 ? 'Select (Approved)' :
-                                        selectionStage === 4 ? 'Select (Rejected)' : 'Select'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                        <button
+                            onClick={handleSelectionCycle}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                background: selectionStage === 0 ? 'var(--color-bg-card)' :
+                                    selectionStage === 1 ? 'var(--primary-color)' :
+                                        selectionStage === 2 ? '#6366f1' : // Indigo
+                                            selectionStage === 3 ? '#10b981' : // Success Green
+                                                '#f59e0b', // Warning Amber
+                                color: 'white',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                transition: 'all 0.3s ease',
+                                boxShadow: selectionStage > 0 ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none'
+                            }}
+                        >
+                            <span className="material-icons">
+                                {selectionStage === 0 ? 'filter_list' :
+                                    selectionStage === 1 ? 'check_box_outline_blank' :
+                                        selectionStage === 2 ? 'done_all' :
+                                            selectionStage === 3 ? 'check_circle' : 'cancel'}
+                            </span>
+                            {selectionStage === 0 ? 'Select' :
+                                selectionStage === 1 ? 'Select (Manual)' :
+                                    selectionStage === 2 ? 'Select (All)' :
+                                        selectionStage === 3 ? 'Select (Approved)' :
+                                            selectionStage === 4 ? 'Select (Rejected)' : 'Select'}
+                        </button>
+
+                        <button
+                            onClick={handleAutoApprove}
+                            className="btn"
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                background: 'linear-gradient(135deg, #10b981, #059669)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                                transition: 'transform 0.2s ease'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                            <span className="material-icons">fact_check</span>
+                            Auto Approve Oldest 5
+                        </button>
+                    </div>
                     <h2 className="mb-3 text-white">Pending Hackathons ({pending.hackathons.length})</h2>
                     <div className="grid grid-3 mb-4">
                         {pending.hackathons

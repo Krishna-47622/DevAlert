@@ -643,3 +643,48 @@ def seed_database():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/auto-approve', methods=['POST'])
+@jwt_required()
+def auto_approve_oldest():
+    """Auto-approve the 5 oldest pending items of each type (admin only)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+            
+        # 1. Find 5 oldest PENDING hackathons
+        oldest_hackathons = Hackathon.query.filter_by(status='pending')\
+            .order_by(Hackathon.created_at.asc())\
+            .limit(5).all()
+            
+        # 2. Find 5 oldest PENDING internships
+        oldest_internships = Internship.query.filter_by(status='pending')\
+            .order_by(Internship.created_at.asc())\
+            .limit(5).all()
+            
+        count_h = 0
+        count_i = 0
+        
+        # Approve them
+        for h in oldest_hackathons:
+            h.status = 'approved'
+            count_h += 1
+            
+        for i in oldest_internships:
+            i.status = 'approved'
+            count_i += 1
+            
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Auto-approved {count_h} hackathons and {count_i} internships.',
+            'hackathons_count': count_h,
+            'internships_count': count_i
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
