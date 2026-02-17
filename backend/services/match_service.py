@@ -133,9 +133,11 @@ class MatchService:
     def _calculate_score_rest(self, prompt, resume_text, opportunity_details):
         """Direct REST call to Gemini API - Tries multiple models"""
         models_to_try = [
-            'gemini-1.5-flash-001',
             'gemini-1.5-flash',
-            'gemini-pro'
+            'gemini-1.5-flash-001',
+            'gemini-1.5-flash-latest',
+            'gemini-pro',
+            'gemini-1.0-pro'
         ]
 
         last_error = None
@@ -155,13 +157,16 @@ class MatchService:
                 
                 if response.status_code == 404:
                     print(f"Model {model_name} not found (404). Trying next model...")
+                    last_error = f"Model {model_name} returned 404 Not Found"
                     continue
                 
                 print(f"DEBUG: Response Status: {response.status_code}")
                 if response.status_code != 200:
-                    print(f"Gemini REST Error {response.status_code}: {response.text}")
+                    error_msg = f"Gemini REST Error {response.status_code}: {response.text}"
+                    print(error_msg)
+                    last_error = error_msg
+                    response.raise_for_status()
                 
-                response.raise_for_status()
                 data = response.json()
                 
                 # Extract text from Gemini REST response structure
