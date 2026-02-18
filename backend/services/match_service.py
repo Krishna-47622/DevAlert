@@ -189,6 +189,13 @@ class MatchService:
                         last_error = f"404 Not Found: {model_name} (v1beta)"
                         continue
                     
+                    if response.status_code == 403:
+                        print(f"403 Forbidden for {model_name}: API key quota exceeded or billing issue.")
+                        last_error = f"403 Forbidden: API quota exceeded or billing not enabled"
+                        # 403 is fatal for all models - stop trying
+                        return self._calculate_fallback_score(resume_text, opportunity_details, 
+                            error_details="API quota exceeded. Please check billing at console.cloud.google.com")
+                    
                     if response.status_code == 400:
                          print(f"Bad Request for {model_name} (v1beta): {response.text}")
                          last_error = f"400 Bad Request: {model_name} (v1beta)"
