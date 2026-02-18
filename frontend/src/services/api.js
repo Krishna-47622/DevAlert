@@ -95,7 +95,10 @@ export const adminAPI = {
     approveHost: (userId) => api.post(`/admin/approve-host/${userId}`),
     bulkAction: (data) => api.post('/admin/bulk-action', data),
     purgeAll: (type) => api.delete(`/admin/purge-all?type=${type}`),
-    autoApprove: () => api.post('/admin/auto-approve')
+    autoApprove: () => api.post('/admin/auto-approve'),
+    getAutoApproveStatus: () => api.get('/admin/auto-approve/status'),
+    toggleAutoApprove: (enabled) => api.post('/admin/auto-approve/toggle', { enabled }),
+
 };
 
 // Applications API

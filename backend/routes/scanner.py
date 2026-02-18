@@ -18,6 +18,8 @@ scanner_bp = Blueprint('scanner', __name__)
 # Initialize scheduler
 scheduler = BackgroundScheduler()
 scan_results = []
+auto_approve_enabled = False  # Toggle for scheduled auto-approval
+
 
 # Google Custom Search API configuration
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY', '')
@@ -749,11 +751,51 @@ def get_schedule_status():
         "jobs": [{"id": j.id, "next": j.next_run_time.isoformat() if j.next_run_time else None} for j in jobs]
     })
 
+def auto_approve_oldest_5(app=None):
+    """Automatically approve the 5 oldest pending hackathons and internships"""
+    global auto_approve_enabled
+    if not auto_approve_enabled:
+        print("[Auto-Approve] Skipped — feature is disabled.", flush=True)
+        return
+    
+    print("[Auto-Approve] Running scheduled auto-approval of oldest 5 pending items...", flush=True)
+    
+    def _do_approve():
+        try:
+            approved = []
+            # Get oldest 5 pending across both types
+            pending_hacks = Hackathon.query.filter_by(status='pending').order_by(Hackathon.created_at.asc()).limit(3).all()
+            pending_interns = Internship.query.filter_by(status='pending').order_by(Internship.created_at.asc()).limit(2).all()
+            
+            for h in pending_hacks:
+                h.status = 'approved'
+                approved.append(f"Hackathon: {h.title}")
+            for i in pending_interns:
+                i.status = 'approved'
+                approved.append(f"Internship: {i.title}")
+            
+            db.session.commit()
+            print(f"[Auto-Approve] Approved {len(approved)} items: {approved}", flush=True)
+        except Exception as e:
+            print(f"[Auto-Approve] Error: {e}", flush=True)
+            db.session.rollback()
+    
+    if app:
+        with app.app_context():
+            _do_approve()
+    else:
+        from app import create_app
+        temp_app = create_app()
+        with temp_app.app_context():
+            _do_approve()
+
+
 def start_scheduler(app):
     if not scheduler.running:
         scheduler.add_job(func=ai_scan_and_save, trigger="interval", minutes=60, id='ai_scanner_v2', args=[app])
+        scheduler.add_job(func=auto_approve_oldest_5, trigger="interval", hours=24, id='auto_approve_job', args=[app])
         scheduler.start()
-        print("✅ Advanced AI Scanner v2 scheduler started")
+        print("✅ Advanced AI Scanner v2 scheduler started (with 24h auto-approve job)")
 
 def stop_scheduler():
     if scheduler.running:

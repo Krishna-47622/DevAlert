@@ -16,6 +16,8 @@ export default function AdminPage() {
     const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'users', 'manage', 'hostRequests'
     const [searchTerm, setSearchTerm] = useState('');
     const [isScanning, setIsScanning] = useState(false);
+    const [autoApproveEnabled, setAutoApproveEnabled] = useState(false);
+    const [autoApproveLoading, setAutoApproveLoading] = useState(false);
 
     // Bulk Selection State
     const [selectedItems, setSelectedItems] = useState(new Set()); // Stores strings: "{type}-{id}"
@@ -46,7 +48,8 @@ export default function AdminPage() {
     useEffect(() => {
         fetchPending();
         fetchUsers();
-        fetchHostRequests(); // Fetch on mount for badge count
+        fetchHostRequests();
+        fetchAutoApproveStatus();
         if (activeTab === 'manage') {
             fetchAllOpportunities();
         }
@@ -114,6 +117,34 @@ export default function AdminPage() {
         } catch (error) {
             console.error('Error rejecting:', error);
             showPopup('Error', 'Failed to reject item.', 'error');
+        }
+    };
+
+    const fetchAutoApproveStatus = async () => {
+        try {
+            const response = await adminAPI.getAutoApproveStatus();
+            setAutoApproveEnabled(response.data.enabled);
+        } catch (error) {
+            console.error('Error fetching auto-approve status:', error);
+        }
+    };
+
+    const handleToggleAutoApprove = async () => {
+        setAutoApproveLoading(true);
+        try {
+            const newState = !autoApproveEnabled;
+            const response = await adminAPI.toggleAutoApprove(newState);
+            setAutoApproveEnabled(response.data.enabled);
+            showPopup(
+                response.data.enabled ? '✅ Auto-Approve Enabled' : '⏸ Auto-Approve Disabled',
+                response.data.message,
+                'success'
+            );
+        } catch (error) {
+            console.error('Error toggling auto-approve:', error);
+            showPopup('Error', 'Failed to update auto-approve setting.', 'error');
+        } finally {
+            setAutoApproveLoading(false);
         }
     };
 
@@ -452,6 +483,56 @@ export default function AdminPage() {
                         </>
                     )}
                 </motion.button>
+
+                {/* Auto-Approve Toggle */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    padding: '0.75rem 1.5rem',
+                    background: autoApproveEnabled
+                        ? 'rgba(34, 197, 94, 0.1)'
+                        : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${autoApproveEnabled ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '12px',
+                    transition: 'all 0.3s ease',
+                    cursor: autoApproveLoading ? 'wait' : 'pointer',
+                    opacity: autoApproveLoading ? 0.7 : 1,
+                    userSelect: 'none',
+                    minWidth: '220px'
+                }} onClick={!autoApproveLoading ? handleToggleAutoApprove : undefined}>
+                    <span className="material-icons" style={{ color: autoApproveEnabled ? '#22c55e' : '#6b7280', fontSize: '20px' }}>
+                        schedule
+                    </span>
+                    <div style={{ flex: 1 }}>
+                        <div style={{ color: 'white', fontWeight: '600', fontSize: '0.85rem' }}>
+                            Auto-Approve (24h)
+                        </div>
+                        <div style={{ color: autoApproveEnabled ? '#22c55e' : '#6b7280', fontSize: '0.75rem' }}>
+                            {autoApproveEnabled ? 'Approves oldest 5 every 24h' : 'Scheduled approval is off'}
+                        </div>
+                    </div>
+                    {/* Toggle pill */}
+                    <div style={{
+                        width: '44px', height: '24px',
+                        borderRadius: '12px',
+                        background: autoApproveEnabled ? '#22c55e' : 'rgba(255,255,255,0.15)',
+                        position: 'relative',
+                        transition: 'background 0.3s ease',
+                        flexShrink: 0
+                    }}>
+                        <div style={{
+                            position: 'absolute',
+                            top: '3px',
+                            left: autoApproveEnabled ? '23px' : '3px',
+                            width: '18px', height: '18px',
+                            borderRadius: '50%',
+                            background: 'white',
+                            transition: 'left 0.3s ease',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.3)'
+                        }} />
+                    </div>
+                </div>
             </div>
 
             {/* Tab Navigation */}

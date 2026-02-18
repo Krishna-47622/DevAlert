@@ -132,6 +132,53 @@ def reject_opportunity(opportunity_type, id):
         return jsonify({'error': str(e)}), 500
 
 
+@admin_bp.route('/auto-approve/toggle', methods=['POST'])
+@jwt_required()
+def toggle_auto_approve():
+    """Enable or disable the scheduled 24h auto-approve feature (admin only)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        from routes.scanner import auto_approve_enabled
+        import routes.scanner as scanner_module
+
+        data = request.get_json() or {}
+        # If 'enabled' is passed, use it; otherwise toggle current state
+        if 'enabled' in data:
+            scanner_module.auto_approve_enabled = bool(data['enabled'])
+        else:
+            scanner_module.auto_approve_enabled = not scanner_module.auto_approve_enabled
+
+        state = scanner_module.auto_approve_enabled
+        print(f"[Admin] Auto-approve scheduled job {'ENABLED' if state else 'DISABLED'} by admin {user.username}")
+        return jsonify({
+            'enabled': state,
+            'message': f"Auto-approve {'enabled' if state else 'disabled'}. Oldest 5 items will be approved every 24 hours."
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/auto-approve/status', methods=['GET'])
+@jwt_required()
+def get_auto_approve_status():
+    """Get current auto-approve toggle state (admin only)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        import routes.scanner as scanner_module
+        return jsonify({'enabled': scanner_module.auto_approve_enabled}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
 @admin_bp.route('/users', methods=['GET'])
 @jwt_required()
 def list_users():
