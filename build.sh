@@ -2,14 +2,15 @@
 # Exit on error
 set -o errexit
 
-# Install Python Dependencies from the backend folder
+# Install Python Dependencies (pip cache speeds up repeat deploys)
 echo "Installing Python dependencies..."
+pip install --upgrade pip
 pip install -r backend/requirements.txt
 
-# Build Frontend from the frontend folder
+# Build Frontend
 echo "Building Frontend..."
 cd frontend
-npm install
+npm ci --prefer-offline
 npm run build
 cd ..
 
