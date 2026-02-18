@@ -53,53 +53,60 @@ def create_app():
         db.create_all()
         print("Database tables ensured")
 
-    # Run Database Migrations
-    try:
-        from sqlalchemy import text
-        with app.app_context():
-            print("🔄 Running automatic database migration...")
-            # Columns to add for AI Match Score and other features
-            migration_configs = [
-                # users table
-                ("users", "resume_text", "TEXT"),
-                ("users", "resume_link", "VARCHAR(500)"),
-                ("users", "resume_updated_at", "DATETIME"),
-                ("users", "email_verified", "BOOLEAN DEFAULT FALSE"),
-                ("users", "two_factor_enabled", "BOOLEAN DEFAULT FALSE"),
+    def run_startup_tasks():
+        """Run non-critical startup tasks in background so server starts fast"""
+        import time
+        time.sleep(2)  # Let gunicorn fully start first
+        
+        # Run Database Migrations
+        try:
+            from sqlalchemy import text
+            with app.app_context():
+                print("🔄 Running automatic database migration...")
+                migration_configs = [
+                    # users table
+                    ("users", "resume_text", "TEXT"),
+                    ("users", "resume_link", "VARCHAR(500)"),
+                    ("users", "resume_updated_at", "DATETIME"),
+                    ("users", "email_verified", "BOOLEAN DEFAULT FALSE"),
+                    ("users", "two_factor_enabled", "BOOLEAN DEFAULT FALSE"),
+                    
+                    # tracked_events table
+                    ("tracked_events", "match_score", "INTEGER"),
+                    ("tracked_events", "match_explanation", "TEXT"),
+                ]
                 
-                # tracked_events table
-                ("tracked_events", "match_score", "INTEGER"),
-                ("tracked_events", "match_explanation", "TEXT"),
-            ]
-            
-            for table, col, type_def in migration_configs:
-                try:
-                    # Check if column exists first for SQLite (PRAGMA table_info)
-                    if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
-                        res = db.session.execute(text(f"PRAGMA table_info({table})")).fetchall()
-                        if not any(row[1] == col for row in res):
-                            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {type_def}"))
+                for table, col, type_def in migration_configs:
+                    try:
+                        if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+                            res = db.session.execute(text(f"PRAGMA table_info({table})")).fetchall()
+                            if not any(row[1] == col for row in res):
+                                db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {type_def}"))
+                                db.session.commit()
+                                print(f"✅ Added column {col} to {table}")
+                        else:
+                            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {type_def}"))
                             db.session.commit()
-                            print(f"✅ Added column {col} to {table}")
-                    else:
-                        # For Postgres/MySQL, use IF NOT EXISTS if supported or just try-except
-                        db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {type_def}"))
-                        db.session.commit()
-                except Exception as col_e:
-                    print(f"ℹ️ Column {col} in {table} skipped or error: {col_e}")
+                    except Exception as col_e:
+                        print(f"ℹ️ Column {col} in {table} skipped: {col_e}")
 
-            print("✅ Database migration finished")
-    except Exception as e:
-        print(f"⚠️ Automatic migration failed: {e}")
-    
-    # Initialize and start scheduler
-    try:
-        start_scheduler(app)
-        atexit.register(stop_scheduler)
-        print("✅ AI Scanner scheduler started successfully.")
-    except Exception as e:
-        print(f"Warning: Scheduler could not be started: {e}")
-        print("AI scanning will not be available, but the app will continue to function.")
+                print("✅ Database migration finished")
+        except Exception as e:
+            print(f"⚠️ Automatic migration failed: {e}")
+        
+        # Initialize and start scheduler
+        try:
+            start_scheduler(app)
+            atexit.register(stop_scheduler)
+            print("✅ AI Scanner scheduler started successfully.")
+        except Exception as e:
+            print(f"Warning: Scheduler could not be started: {e}")
+
+    # Run startup tasks in background thread so server starts immediately
+    import threading
+    startup_thread = threading.Thread(target=run_startup_tasks, daemon=True)
+    startup_thread.start()
+
     
     # Serve React frontend
     @app.route('/', defaults={'path': ''})
