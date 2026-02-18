@@ -895,109 +895,109 @@ export default function AdminPage() {
                             </table>
                         </div>
                     )}
+
+                    {/* Collapsible Internships Section Header */}
+                    <div
+                        onClick={() => toggleSection('internships')}
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: collapsedSections.internships ? '1rem' : '0.75rem',
+                            padding: '1rem 1.25rem',
+                            background: 'rgba(16,185,129,0.08)',
+                            border: '1px solid rgba(16,185,129,0.2)',
+                            borderRadius: collapsedSections.internships ? '12px' : '12px 12px 0 0',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            transition: 'all 0.3s ease'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span className="material-icons" style={{ color: '#10b981', fontSize: '20px' }}>work</span>
+                            <h2 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: '700' }}>
+                                Internships
+                                <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: '#6b7280', fontWeight: '400' }}>
+                                    ({allOpportunities.internships.length})
+                                </span>
+                            </h2>
+                        </div>
+                        <span className="material-icons" style={{
+                            color: '#9ca3af', fontSize: '20px',
+                            transform: collapsedSections.internships ? 'rotate(-90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.3s ease'
+                        }}>expand_more</span>
+                    </div>
+                    {
+                        !collapsedSections.internships && (
+                            <div className="card" style={{ padding: '0', overflowX: 'auto', borderRadius: '0 0 12px 12px', borderTop: 'none' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr>
+                                            <th style={tableHeaderStyle}>Title</th>
+                                            <th style={tableHeaderStyle}>Company</th>
+                                            <th style={tableHeaderStyle}>Status</th>
+                                            <th style={tableHeaderStyle}>Created At</th>
+                                            <th style={tableHeaderStyle}>
+                                                Actions
+                                                <button
+                                                    onClick={() => handlePurgeAll('internship')}
+                                                    style={{
+                                                        marginLeft: '0.5rem',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: '#ef4444',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.8rem',
+                                                        textDecoration: 'underline'
+                                                    }}
+                                                >
+                                                    Purge All
+                                                </button>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {allOpportunities.internships
+                                            .filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase()) || i.company.toLowerCase().includes(searchTerm.toLowerCase()))
+                                            .map((internship) => (
+                                                <tr
+                                                    key={internship.id}
+                                                    onClick={() => {
+                                                        if (selectionStage > 0) {
+                                                            toggleSelection('internship', internship.id);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        ...tableCellStyle,
+                                                        background: selectedItems.has(`internship-${internship.id}`) ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                                        cursor: selectionStage > 0 ? 'pointer' : 'default',
+                                                        transition: 'background 0.2s',
+                                                        opacity: selectionStage === 0 ? 1 : (selectedItems.has(`internship-${internship.id}`) ? 1 : 0.7)
+                                                    }}
+                                                >
+                                                    <td style={tableCellStyle}>{internship.title}</td>
+                                                    <td style={tableCellStyle}>{internship.company}</td>
+                                                    <td style={tableCellStyle}>
+                                                        <span className={`badge badge-${internship.status === 'approved' ? 'success' : internship.status === 'rejected' ? 'danger' : 'warning'}`}>
+                                                            {internship.status}
+                                                        </span>
+                                                    </td>
+                                                    <td style={tableCellStyle}>{new Date(internship.created_at).toLocaleDateString()}</td>
+                                                    <td style={tableCellStyle}>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={(e) => { e.stopPropagation(); openModal(internship, 'internship'); }} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>View</button>
+                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteOpportunity('internship', internship.id); }} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>Delete</button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                 </div>
             )}
-
-            {/* Collapsible Internships Section Header */}
-            <div
-                onClick={() => toggleSection('internships')}
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: collapsedSections.internships ? '1rem' : '0.75rem',
-                    padding: '1rem 1.25rem',
-                    background: 'rgba(16,185,129,0.08)',
-                    border: '1px solid rgba(16,185,129,0.2)',
-                    borderRadius: collapsedSections.internships ? '12px' : '12px 12px 0 0',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    transition: 'all 0.3s ease'
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span className="material-icons" style={{ color: '#10b981', fontSize: '20px' }}>work</span>
-                    <h2 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: '700' }}>
-                        Internships
-                        <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: '#6b7280', fontWeight: '400' }}>
-                            ({allOpportunities.internships.length})
-                        </span>
-                    </h2>
-                </div>
-                <span className="material-icons" style={{
-                    color: '#9ca3af', fontSize: '20px',
-                    transform: collapsedSections.internships ? 'rotate(-90deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.3s ease'
-                }}>expand_more</span>
-            </div>
-            {
-                !collapsedSections.internships && (
-                    <div className="card" style={{ padding: '0', overflowX: 'auto', borderRadius: '0 0 12px 12px', borderTop: 'none' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr>
-                                    <th style={tableHeaderStyle}>Title</th>
-                                    <th style={tableHeaderStyle}>Company</th>
-                                    <th style={tableHeaderStyle}>Status</th>
-                                    <th style={tableHeaderStyle}>Created At</th>
-                                    <th style={tableHeaderStyle}>
-                                        Actions
-                                        <button
-                                            onClick={() => handlePurgeAll('internship')}
-                                            style={{
-                                                marginLeft: '0.5rem',
-                                                background: 'none',
-                                                border: 'none',
-                                                color: '#ef4444',
-                                                cursor: 'pointer',
-                                                fontSize: '0.8rem',
-                                                textDecoration: 'underline'
-                                            }}
-                                        >
-                                            Purge All
-                                        </button>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {allOpportunities.internships
-                                    .filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase()) || i.company.toLowerCase().includes(searchTerm.toLowerCase()))
-                                    .map((internship) => (
-                                        <tr
-                                            key={internship.id}
-                                            onClick={() => {
-                                                if (selectionStage > 0) {
-                                                    toggleSelection('internship', internship.id);
-                                                }
-                                            }}
-                                            style={{
-                                                ...tableCellStyle,
-                                                background: selectedItems.has(`internship-${internship.id}`) ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                                                cursor: selectionStage > 0 ? 'pointer' : 'default',
-                                                transition: 'background 0.2s',
-                                                opacity: selectionStage === 0 ? 1 : (selectedItems.has(`internship-${internship.id}`) ? 1 : 0.7)
-                                            }}
-                                        >
-                                            <td style={tableCellStyle}>{internship.title}</td>
-                                            <td style={tableCellStyle}>{internship.company}</td>
-                                            <td style={tableCellStyle}>
-                                                <span className={`badge badge-${internship.status === 'approved' ? 'success' : internship.status === 'rejected' ? 'danger' : 'warning'}`}>
-                                                    {internship.status}
-                                                </span>
-                                            </td>
-                                            <td style={tableCellStyle}>{new Date(internship.created_at).toLocaleDateString()}</td>
-                                            <td style={tableCellStyle}>
-                                                <div className="flex gap-2">
-                                                    <button onClick={(e) => { e.stopPropagation(); openModal(internship, 'internship'); }} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>View</button>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteOpportunity('internship', internship.id); }} className="btn btn-danger" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '8px' }}>Delete</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
         </div>
     )
 }
