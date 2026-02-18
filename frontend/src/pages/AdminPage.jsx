@@ -998,209 +998,207 @@ export default function AdminPage() {
                         )}
                 </div>
             )}
-        </div>
-    )
-}
 
-{/* User Management Tab */ }
-{
-    activeTab === 'users' && (
-        <div className="card fade-in" style={{ padding: '0', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                    <tr>
-                        <th style={tableHeaderStyle}>Username</th>
-                        <th style={tableHeaderStyle}>Email</th>
-                        <th style={tableHeaderStyle}>Role</th>
-                        <th style={tableHeaderStyle}>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {users
-                        .filter(u => u.username.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-                        .map((user) => (
-                            <tr key={user.id}>
-                                <td style={tableCellStyle}>{user.username}</td>
-                                <td style={tableCellStyle}>{user.email}</td>
-                                <td style={tableCellStyle}>
-                                    <select
-                                        value={user.role}
-                                        onChange={(e) => handleRoleUpdate(user.id, e.target.value)}
-                                        className="form-select"
-                                        style={{ width: 'auto', padding: '0.4rem' }}
-                                    >
-                                        <option value="participant">Participant</option>
-                                        <option value="hoster">Hoster</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                </td>
-                                <td style={tableCellStyle}>
-                                    <button onClick={() => handleDeleteUser(user.id)} className="btn btn-danger" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>Delete</button>
-                                </td>
-                            </tr>
-                        ))}
-                </tbody>
-            </table>
-        </div>
-    )
-}
 
-{/* Host Requests Tab */ }
-{
-    activeTab === 'hostRequests' && (
-        <div className="fade-in">
-            <h2 className="mb-3 text-white">Host Requests ({hostRequests.length})</h2>
-            {hostRequests.length === 0 ? (
-                <div className="card text-center p-5">
-                    <p className="text-gray-400">No pending host requests.</p>
-                </div>
-            ) : (
-                <div className="card" style={{ padding: '0', overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr>
-                                <th style={tableHeaderStyle}>Username</th>
-                                <th style={tableHeaderStyle}>Email</th>
-                                <th style={tableHeaderStyle}>Organization</th>
-                                <th style={tableHeaderStyle}>Designation</th>
-                                <th style={tableHeaderStyle}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {hostRequests
-                                .filter(u => u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                    (u.organization && u.organization.toLowerCase().includes(searchTerm.toLowerCase())))
-                                .map((user) => (
-                                    <tr key={user.id}>
-                                        <td style={tableCellStyle}>{user.username}</td>
-                                        <td style={tableCellStyle}>{user.email}</td>
-                                        <td style={tableCellStyle}>{user.organization || '-'}</td>
-                                        <td style={tableCellStyle}>{user.designation || '-'}</td>
-                                        <td style={tableCellStyle}>
-                                            <button
-                                                onClick={() => handleApproveHost(user.id)}
-                                                className="btn btn-success"
-                                                style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', borderRadius: '8px' }}
-                                            >
-                                                Approve Host
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </div>
-    )
-}
+            {/* User Management Tab */}
+            {
+                activeTab === 'users' && (
+                    <div className="card fade-in" style={{ padding: '0', overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    <th style={tableHeaderStyle}>Username</th>
+                                    <th style={tableHeaderStyle}>Email</th>
+                                    <th style={tableHeaderStyle}>Role</th>
+                                    <th style={tableHeaderStyle}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users
+                                    .filter(u => u.username.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))
+                                    .map((user) => (
+                                        <tr key={user.id}>
+                                            <td style={tableCellStyle}>{user.username}</td>
+                                            <td style={tableCellStyle}>{user.email}</td>
+                                            <td style={tableCellStyle}>
+                                                <select
+                                                    value={user.role}
+                                                    onChange={(e) => handleRoleUpdate(user.id, e.target.value)}
+                                                    className="form-select"
+                                                    style={{ width: 'auto', padding: '0.4rem' }}
+                                                >
+                                                    <option value="participant">Participant</option>
+                                                    <option value="hoster">Hoster</option>
+                                                    <option value="admin">Admin</option>
+                                                </select>
+                                            </td>
+                                            <td style={tableCellStyle}>
+                                                <button onClick={() => handleDeleteUser(user.id)} className="btn btn-danger" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>Delete</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )
+            }
 
-{/* Modal */ }
-{
-    modalOpen && selectedItem && (
-        <Modal
-            isOpen={modalOpen}
-            onClose={() => setModalOpen(false)}
-            title={selectedItem.title}
-        >
-            <div style={{ color: 'var(--color-text-primary)' }}>
-                <p><strong>Description:</strong></p>
-                <p style={{ color: 'var(--color-text-secondary)' }}>{selectedItem.description}</p>
-                <div style={{ margin: '1rem 0' }}>
-                    {selectedItem.type === 'hackathon' ? (
-                        <>
-                            <p><strong>Organizer:</strong> {selectedItem.organizer}</p>
-                            <p><strong>Prize Pool:</strong> {selectedItem.prize_pool}</p>
-                            <p><strong>Deadline:</strong> {new Date(selectedItem.deadline).toLocaleDateString()}</p>
-                        </>
-                    ) : (
-                        <>
-                            <p><strong>Company:</strong> {selectedItem.company}</p>
-                            <p><strong>Stipend:</strong> {selectedItem.stipend}</p>
-                            <p><strong>Duration:</strong> {selectedItem.duration}</p>
-                        </>
-                    )}
-                    <p><strong>Location:</strong> {selectedItem.location}</p>
-                    <p><strong>Mode:</strong> {selectedItem.mode}</p>
-                </div>
-            </div>
-        </Modal>
-    )
-}
+            {/* Host Requests Tab */}
+            {
+                activeTab === 'hostRequests' && (
+                    <div className="fade-in">
+                        <h2 className="mb-3 text-white">Host Requests ({hostRequests.length})</h2>
+                        {hostRequests.length === 0 ? (
+                            <div className="card text-center p-5">
+                                <p className="text-gray-400">No pending host requests.</p>
+                            </div>
+                        ) : (
+                            <div className="card" style={{ padding: '0', overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr>
+                                            <th style={tableHeaderStyle}>Username</th>
+                                            <th style={tableHeaderStyle}>Email</th>
+                                            <th style={tableHeaderStyle}>Organization</th>
+                                            <th style={tableHeaderStyle}>Designation</th>
+                                            <th style={tableHeaderStyle}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {hostRequests
+                                            .filter(u => u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                (u.organization && u.organization.toLowerCase().includes(searchTerm.toLowerCase())))
+                                            .map((user) => (
+                                                <tr key={user.id}>
+                                                    <td style={tableCellStyle}>{user.username}</td>
+                                                    <td style={tableCellStyle}>{user.email}</td>
+                                                    <td style={tableCellStyle}>{user.organization || '-'}</td>
+                                                    <td style={tableCellStyle}>{user.designation || '-'}</td>
+                                                    <td style={tableCellStyle}>
+                                                        <button
+                                                            onClick={() => handleApproveHost(user.id)}
+                                                            className="btn btn-success"
+                                                            style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', borderRadius: '8px' }}
+                                                        >
+                                                            Approve Host
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )
+            }
 
-{/* Bulk Action Bar */ }
-<AnimatePresence>
-    {selectedItems.size > 0 && (
-        <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            style={{
-                position: 'fixed',
-                bottom: '2rem',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: 'rgba(15, 23, 42, 0.9)',
-                backdropFilter: 'blur(10px)',
-                padding: '1rem 2rem',
-                borderRadius: '16px',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1.5rem',
-                zIndex: 1000,
-                border: '1px solid rgba(255,255,255,0.1)'
-            }}
-        >
-            <span style={{ color: 'white', fontWeight: '600' }}>
-                {selectedItems.size} selected
-            </span>
+            {/* Modal */}
+            {
+                modalOpen && selectedItem && (
+                    <Modal
+                        isOpen={modalOpen}
+                        onClose={() => setModalOpen(false)}
+                        title={selectedItem.title}
+                    >
+                        <div style={{ color: 'var(--color-text-primary)' }}>
+                            <p><strong>Description:</strong></p>
+                            <p style={{ color: 'var(--color-text-secondary)' }}>{selectedItem.description}</p>
+                            <div style={{ margin: '1rem 0' }}>
+                                {selectedItem.type === 'hackathon' ? (
+                                    <>
+                                        <p><strong>Organizer:</strong> {selectedItem.organizer}</p>
+                                        <p><strong>Prize Pool:</strong> {selectedItem.prize_pool}</p>
+                                        <p><strong>Deadline:</strong> {new Date(selectedItem.deadline).toLocaleDateString()}</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p><strong>Company:</strong> {selectedItem.company}</p>
+                                        <p><strong>Stipend:</strong> {selectedItem.stipend}</p>
+                                        <p><strong>Duration:</strong> {selectedItem.duration}</p>
+                                    </>
+                                )}
+                                <p><strong>Location:</strong> {selectedItem.location}</p>
+                                <p><strong>Mode:</strong> {selectedItem.mode}</p>
+                            </div>
+                        </div>
+                    </Modal>
+                )
+            }
 
-            <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
+            {/* Bulk Action Bar */}
+            <AnimatePresence>
+                {selectedItems.size > 0 && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '2rem',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(15, 23, 42, 0.9)',
+                            backdropFilter: 'blur(10px)',
+                            padding: '1rem 2rem',
+                            borderRadius: '16px',
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1.5rem',
+                            zIndex: 1000,
+                            border: '1px solid rgba(255,255,255,0.1)'
+                        }}
+                    >
+                        <span style={{ color: 'white', fontWeight: '600' }}>
+                            {selectedItems.size} selected
+                        </span>
 
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button
-                    onClick={() => handleBulkAction('approve')}
-                    className="btn btn-success"
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                >
-                    Approve Selected
-                </button>
-                <button
-                    onClick={() => handleBulkAction('reject')}
-                    className="btn btn-danger"
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', background: '#eab308', borderColor: '#eab308', color: 'black' }}
-                >
-                    Reject Selected
-                </button>
-                <button
-                    onClick={() => handleBulkAction('delete')}
-                    className="btn btn-danger"
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                >
-                    Delete Selected
-                </button>
-            </div>
+                        <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
 
-            <button
-                onClick={() => {
-                    setSelectedItems(new Set());
-                    setSelectionStage(0);
-                }}
-                style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer',
-                    marginLeft: '0.5rem'
-                }}
-            >
-                <span className="material-icons">close</span>
-            </button>
-        </motion.div>
-    )}
-</AnimatePresence>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <button
+                                onClick={() => handleBulkAction('approve')}
+                                className="btn btn-success"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                            >
+                                Approve Selected
+                            </button>
+                            <button
+                                onClick={() => handleBulkAction('reject')}
+                                className="btn btn-danger"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', background: '#eab308', borderColor: '#eab308', color: 'black' }}
+                            >
+                                Reject Selected
+                            </button>
+                            <button
+                                onClick={() => handleBulkAction('delete')}
+                                className="btn btn-danger"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                            >
+                                Delete Selected
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setSelectedItems(new Set());
+                                setSelectionStage(0);
+                            }}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'rgba(255,255,255,0.6)',
+                                cursor: 'pointer',
+                                marginLeft: '0.5rem'
+                            }}
+                        >
+                            <span className="material-icons">close</span>
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div >
     );
 }
