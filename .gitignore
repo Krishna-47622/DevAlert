@@ -1,66 +1,64 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
+*.pyo
+*.pyd
 .Python
-env/
-venv/
-.venv/
-ENV/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
 *.egg
+*.egg-info/
+dist/
+build/
+*.so
+venv/
+env/
+.venv/
+.env/
 
-# Flask
-instance/
-.webassets-cache
-
-# Environment
+# Environment variables - NEVER commit these
 .env
+*.env
+backend/.env
+frontend/.env
 .env.local
-.env.*.local
+.env.production
+.env.development
 
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Database
+*.db
+*.sqlite3
 
 # Node
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+dist/
+.next/
 
-# React build
-frontend/dist/
-frontend/build/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Local DB Repair Scripts
-fix_db_schema.py
-verify_all_dbs.py
-final_fix.py
-ultimate_db_fix.py
-emergency_fix.py
-diagnose_db.py
-fix_db_final.py
+# Logs
 *.log
-*.bat
+logs/
+
+# Test files
+debug_output.txt
+api_result.txt
+test_api*.py
+verify_key.py
+debug_key.py
+test_key.py
+test_gemini*.py
+check_db_data.py
+test_match_live.py
+test_pg_connection.py
+migrate_to_supabase.py
+create_supabase_tables.py
