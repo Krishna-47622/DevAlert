@@ -169,3 +169,30 @@ def update_application_status(id):
         return jsonify({'message': 'Status updated', 'application': application.to_dict()}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@applications_bp.route('/<int:id>', methods=['DELETE'])
+@jwt_required()
+def delete_application(id):
+    """Delete an application (admin/hoster or the applicant themselves)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+
+        application = Application.query.get(id)
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+
+        # Allow: admin, hoster, or the user who submitted the application
+        is_admin_or_hoster = user and user.role in ['admin', 'hoster']
+        is_own_application = application.user_id == user_id
+
+        if not is_admin_or_hoster and not is_own_application:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        db.session.delete(application)
+        db.session.commit()
+        return jsonify({'message': 'Application deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

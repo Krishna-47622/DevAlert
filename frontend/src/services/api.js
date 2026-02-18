@@ -108,7 +108,9 @@ export const applicationsAPI = {
     getForEvent: (eventType, eventId) => api.get(`/applications/event/${eventType}/${eventId}`),
     getHosted: () => api.get('/applications/hosted'),
     updateStatus: (id, status) => api.patch(`/applications/${id}/status`, { status }),
+    delete: (id) => api.delete(`/applications/${id}`),
 };
+
 
 // Notifications API
 export const notificationsAPI = {

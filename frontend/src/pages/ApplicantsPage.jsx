@@ -41,6 +41,18 @@ export default function ApplicantsPage() {
         }
     };
 
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this application? This action cannot be undone.')) return;
+        try {
+            await applicationsAPI.delete(id);
+            setApplications(prev => prev.filter(app => app.id !== id));
+            showPopup('Application deleted successfully', 'success');
+        } catch (error) {
+            console.error('Error deleting application:', error);
+            showPopup('Failed to delete application', 'error');
+        }
+    };
+
     const showPopup = (message, type) => {
         setPopup({ show: true, message, type });
         setTimeout(() => setPopup({ show: false, message: '', type: 'success' }), 3000);
@@ -179,6 +191,14 @@ export default function ApplicantsPage() {
                                                     title="Reject Application"
                                                 >
                                                     <span className="material-icons">cancel</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(app.id)}
+                                                    className="btn btn-outline-secondary flex items-center justify-center"
+                                                    style={{ width: '40px', height: '40px', padding: 0, borderColor: '#6b7280', color: '#9ca3af' }}
+                                                    title="Delete Application"
+                                                >
+                                                    <span className="material-icons">delete</span>
                                                 </button>
                                             </div>
                                         </div>
