@@ -190,11 +190,10 @@ class MatchService:
                         continue
                     
                     if response.status_code == 403:
-                        print(f"403 Forbidden for {model_name}: API key quota exceeded or billing issue.")
-                        last_error = f"403 Forbidden: API quota exceeded or billing not enabled"
-                        # 403 is fatal for all models - stop trying
-                        return self._calculate_fallback_score(resume_text, opportunity_details, 
-                            error_details="API quota exceeded. Please check billing at console.cloud.google.com")
+                        err_body = response.text[:300]
+                        print(f"403 Forbidden for {model_name}: {err_body}")
+                        last_error = f"403 Forbidden: {err_body}"
+                        continue
                     
                     if response.status_code == 400:
                          print(f"Bad Request for {model_name} (v1beta): {response.text}")
@@ -205,10 +204,10 @@ class MatchService:
 
                     print(f"DEBUG: Response Status: {response.status_code}")
                     if response.status_code != 200:
-                        error_msg = f"Gemini Error {response.status_code}: {response.text}"
+                        error_msg = f"Gemini Error {response.status_code}: {response.text[:300]}"
                         print(error_msg)
                         last_error = error_msg
-                        response.raise_for_status()
+                        continue
                     
                     data = response.json()
                     
