@@ -390,10 +390,10 @@ export default function AdminPage() {
     // Style constants for reuse
     const tabButtonStyle = (isActive) => ({
         padding: '0.75rem 1.5rem',
-        background: isActive ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.03)',
-        color: isActive ? 'white' : 'var(--color-text-secondary)',
+        background: isActive ? 'var(--primary-color, #22c55e)' : 'rgba(255, 255, 255, 0.05)',
+        color: isActive ? 'white' : 'rgba(255, 255, 255, 0.6)',
         border: '1px solid',
-        borderColor: isActive ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.08)',
+        borderColor: isActive ? 'var(--primary-color, #22c55e)' : 'rgba(255, 255, 255, 0.1)',
         borderRadius: '10px',
         cursor: 'pointer',
         fontWeight: '600',

@@ -13,7 +13,7 @@ admin_bp = Blueprint('admin', __name__)
 def get_pending_opportunities():
     """Get all pending hackathons and internships (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or user.role != 'admin':
@@ -39,7 +39,7 @@ def get_pending_opportunities():
 def get_all_opportunities():
     """Get all hackathons and internships (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or user.role != 'admin':
@@ -65,7 +65,7 @@ def get_all_opportunities():
 def approve_opportunity(opportunity_type, id):
     """Approve a hackathon or internship (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or user.role != 'admin':
@@ -101,7 +101,7 @@ def approve_opportunity(opportunity_type, id):
 def reject_opportunity(opportunity_type, id):
     """Reject a hackathon or internship (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or user.role != 'admin':
@@ -138,7 +138,7 @@ def toggle_auto_approve():
     """Enable or disable the scheduled 24h auto-approve feature (admin only).
     Persists across server restarts via AppSetting DB table."""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         if not user or user.role != 'admin':
             return jsonify({'error': 'Unauthorized'}), 403
@@ -168,7 +168,7 @@ def toggle_auto_approve():
 def get_auto_approve_status():
     """Get current auto-approve toggle state from DB (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         if not user or user.role != 'admin':
             return jsonify({'error': 'Unauthorized'}), 403
@@ -184,7 +184,7 @@ def get_auto_approve_status():
 @jwt_required()
 def list_users():
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or user.role != 'admin':
@@ -204,7 +204,7 @@ def list_users():
 @jwt_required()
 def update_user_role(user_id):
     try:
-        user_id_from_token = get_jwt_identity()
+        user_id_from_token = int(get_jwt_identity())
         admin_user = User.query.get(user_id_from_token)
         
         if not admin_user or admin_user.role != 'admin':
@@ -239,7 +239,7 @@ def update_user_role(user_id):
 @jwt_required()
 def delete_user(user_id):
     try:
-        user_id_from_token = get_jwt_identity()
+        user_id_from_token = int(get_jwt_identity())
         admin_user = User.query.get(user_id_from_token)
         
         if not admin_user or admin_user.role != 'admin':
@@ -274,7 +274,7 @@ def delete_user(user_id):
 def get_stats():
     """Get dashboard statistics (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or user.role != 'admin':
@@ -320,7 +320,7 @@ def trigger_ai_scan():
     """Manually trigger AI scan (admin only) - Background version to prevent 502"""
     print(">>> [Admin] trigger_ai_scan called", flush=True)
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         print(f">>> [Admin] user_id from token: {user_id}", flush=True)
         user = User.query.get(int(user_id))
         
@@ -360,7 +360,7 @@ def trigger_ai_scan():
 def get_host_requests():
     """Get all users requesting host access (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(int(user_id))
         
         if not user or user.role != 'admin':
@@ -383,7 +383,7 @@ def get_host_requests():
 def approve_host(user_id):
     """Approve a user's host request (admin only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = int(get_jwt_identity())
         current_user = User.query.get(current_user_id)
         
         if not current_user or current_user.role != 'admin':
@@ -433,7 +433,7 @@ def test_email_config():
     results = {}
     
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         if not user: return jsonify({'error': 'User not found'}), 404
         
@@ -529,7 +529,7 @@ def test_email_config():
 def bulk_action():
     """Perform bulk actions on hackathons or internships (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or user.role != 'admin':
@@ -577,7 +577,7 @@ def bulk_action():
 def purge_all():
     """Delete ALL opportunities of a specific type (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or user.role != 'admin':
@@ -697,7 +697,7 @@ def seed_database():
 def auto_approve_oldest():
     """Auto-approve the 5 oldest pending items of each type (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or user.role != 'admin':
