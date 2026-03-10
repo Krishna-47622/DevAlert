@@ -92,8 +92,8 @@ export default function Cursor() {
                 }}
                 animate={{
                     scale: isHovered ? 1.8 : 1,
-                    backgroundColor: isHovered ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                    borderColor: isHovered ? 'rgba(99, 102, 241, 0.4)' : 'rgba(255, 255, 255, 0.1)',
+                    backgroundColor: isHovered ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                    borderColor: isHovered ? 'rgba(139, 92, 246, 0.4)' : 'rgba(255, 255, 255, 0.1)',
                 }}
                 transition={{ type: 'spring', damping: 20, stiffness: 250 }}
             />

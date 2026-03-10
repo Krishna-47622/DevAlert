@@ -5,7 +5,7 @@ Searches Google for real hackathons and internships
 from flask import Blueprint, jsonify, request, current_app
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
-from models import db, Hackathon, Internship, User, Notification
+from models import db, Hackathon, Internship, User, Notification, AppSetting
 import requests
 import os
 import re
@@ -18,7 +18,14 @@ scanner_bp = Blueprint('scanner', __name__)
 # Initialize scheduler
 scheduler = BackgroundScheduler()
 scan_results = []
-auto_approve_enabled = False  # Toggle for scheduled auto-approval
+
+def is_auto_approve_enabled():
+    """Read auto-approve state from the database (persists across restarts)"""
+    try:
+        val = AppSetting.get('auto_approve_enabled', 'false')
+        return val.lower() == 'true'
+    except Exception:
+        return False
 
 
 # Google Custom Search API configuration
@@ -753,17 +760,14 @@ def get_schedule_status():
 
 def auto_approve_oldest_5(app=None):
     """Automatically approve the 5 oldest pending hackathons and internships"""
-    global auto_approve_enabled
-    if not auto_approve_enabled:
-        print("[Auto-Approve] Skipped — feature is disabled.", flush=True)
-        return
-    
-    print("[Auto-Approve] Running scheduled auto-approval of oldest 5 pending items...", flush=True)
-    
-    def _do_approve():
+    def _check_and_approve():
+        if not is_auto_approve_enabled():
+            print("[Auto-Approve] Skipped — feature is disabled.", flush=True)
+            return
+        
+        print("[Auto-Approve] Running scheduled auto-approval of oldest 5 pending items...", flush=True)
         try:
             approved = []
-            # Get oldest 5 pending across both types
             pending_hacks = Hackathon.query.filter_by(status='pending').order_by(Hackathon.created_at.asc()).limit(3).all()
             pending_interns = Internship.query.filter_by(status='pending').order_by(Internship.created_at.asc()).limit(2).all()
             
@@ -782,20 +786,89 @@ def auto_approve_oldest_5(app=None):
     
     if app:
         with app.app_context():
-            _do_approve()
+            _check_and_approve()
     else:
         from app import create_app
         temp_app = create_app()
         with temp_app.app_context():
-            _do_approve()
+            _check_and_approve()
+
+def is_opportunity_expired(url):
+    if not url:
+        return False
+    try:
+        if not check_link_validity(url):
+            return True
+
+        text = fetch_page_text(url)
+        if not text:
+            return False
+            
+        text_lower = text.lower()
+        expiration_phrases = [
+            "registration closed",
+            "registrations are closed",
+            "applications closed",
+            "applications are closed",
+            "event ended",
+            "this opportunity has expired",
+            "no longer accepting applications",
+            "deadline passed",
+            "this form is no longer accepting responses",
+            "applications have closed"
+        ]
+        
+        for phrase in expiration_phrases:
+            if phrase in text_lower:
+                return True
+                
+        return False
+    except:
+        return False
+
+def cleanup_expired_opportunities(app=None):
+    """Periodically check all active opportunities and auto-expire them if the page is dead"""
+    def _run_cleanup():
+        print("[Cleanup] Starting URL-based expiration check...", flush=True)
+        try:
+            expired_count = 0
+            # Check Hackathons
+            hackathons = Hackathon.query.filter_by(status='approved').all()
+            for h in hackathons:
+                if h.registration_link and is_opportunity_expired(h.registration_link):
+                    h.status = 'expired'
+                    expired_count += 1
+            
+            # Check Internships
+            internships = Internship.query.filter_by(status='approved').all()
+            for i in internships:
+                if i.application_link and is_opportunity_expired(i.application_link):
+                    i.status = 'expired'
+                    expired_count += 1
+            
+            db.session.commit()
+            print(f"[Cleanup] Finished. Expired {expired_count} opportunities based on link contents.", flush=True)
+        except Exception as e:
+            print(f"[Cleanup] Error: {e}", flush=True)
+            db.session.rollback()
+
+    if app:
+        with app.app_context():
+            _run_cleanup()
+    else:
+        from app import create_app
+        temp_app = create_app()
+        with temp_app.app_context():
+            _run_cleanup()
 
 
 def start_scheduler(app):
     if not scheduler.running:
         scheduler.add_job(func=ai_scan_and_save, trigger="interval", minutes=60, id='ai_scanner_v2', args=[app])
         scheduler.add_job(func=auto_approve_oldest_5, trigger="interval", hours=24, id='auto_approve_job', args=[app])
+        scheduler.add_job(func=cleanup_expired_opportunities, trigger="interval", hours=12, id='cleanup_expired_job', args=[app])
         scheduler.start()
-        print("✅ Advanced AI Scanner v2 scheduler started (with 24h auto-approve job)")
+        print("✅ Advanced AI Scanner v2 scheduler started (with 24h auto-approve job & 12h link cleanup job)")
 
 def stop_scheduler():
     if scheduler.running:

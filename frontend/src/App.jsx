@@ -1,13 +1,9 @@
-import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
-import LiquidEther from './components/ui/LiquidEther';
-// import DeveloperBackground from './components/canvas/DeveloperBackground';
-// import DistortedSphere from './components/canvas/DistortedSphere';
-import SmoothScroll from './components/SmoothScroll';
-import Cursor from './components/Cursor';
+import GlowCursor from './components/GlowCursor';
 import PageTransition from './components/PageTransition';
+import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AdminPage from './pages/AdminPage';
@@ -23,8 +19,8 @@ import AccountSettings from './pages/AccountSettings';
 import Tracker from './pages/Tracker';
 import AboutPage from './pages/AboutPage';
 import HelpPage from './pages/HelpPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import Footer from './components/Footer';
-import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
 function PrivateRoute({ children, adminOnly = false }) {
@@ -46,9 +42,18 @@ function PrivateRoute({ children, adminOnly = false }) {
   return children;
 }
 
+/* Landing page shown at "/" for guests, Dashboard for authenticated */
+function HomeRoute() {
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch (e) { /* ignore */ }
 
-
-
+  if (user) {
+    return <PageTransition><Dashboard /></PageTransition>;
+  }
+  return <PageTransition><LandingPage /></PageTransition>;
+}
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -62,14 +67,8 @@ function AnimatedRoutes() {
         <Route path="/verify-email/:token" element={<PageTransition><VerifyEmail /></PageTransition>} />
         <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
         <Route path="/help" element={<PageTransition><HelpPage /></PageTransition>} />
-        <Route
-          path="/"
-          element={
-            <PrivateRoute>
-              <PageTransition><Dashboard /></PageTransition>
-            </PrivateRoute>
-          }
-        />
+        <Route path="/privacy-policy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
+        <Route path="/" element={<HomeRoute />} />
         <Route
           path="/admin"
           element={
@@ -134,45 +133,10 @@ function AnimatedRoutes() {
 }
 
 function App() {
-  useEffect(() => {
-    // Force dark mode
-    document.documentElement.setAttribute('data-theme', 'dark');
-    localStorage.setItem('theme', 'dark');
-  }, []);
-
   return (
     <Router>
       <div className="app">
-        <Cursor />
-        <div style={{
-          width: '100vw',
-          height: '100vh',
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          zIndex: -1
-        }}>
-          <LiquidEther
-            colors={['#5227FF', '#FF9FFC', '#B19EEF']}
-            mouseForce={20}
-            cursorSize={100}
-            isViscous
-            viscous={10}
-            iterationsViscous={10}
-            iterationsPoisson={10}
-            resolution={0.2}
-            isBounce={false}
-            autoDemo
-            autoSpeed={0.5}
-            autoIntensity={2.2}
-            takeoverDuration={0.25}
-            autoResumeDelay={3000}
-            autoRampDuration={0.6}
-            color0="#5227FF"
-            color1="#FF9FFC"
-            color2="#B19EEF"
-          />
-        </div>
+        <GlowCursor />
         <Navbar />
         <div className="main-content">
           <AnimatedRoutes />

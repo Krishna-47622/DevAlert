@@ -42,7 +42,7 @@ function Scene({ globalMouse }) {
         <>
             <ambientLight intensity={0.2} />
             <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} color="#ffffff" />
-            <pointLight position={[-10, -10, -10]} intensity={0.5} color="#6366f1" />
+            <pointLight position={[-10, -10, -10]} intensity={0.5} color="#2563eb" />
 
             <group ref={groupRef}>
                 {/* Drop 1 */}

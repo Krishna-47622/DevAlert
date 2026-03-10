@@ -1,41 +1,4 @@
-import { useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { MeshDistortMaterial, Sphere, Float } from '@react-three/drei';
-
-function PopupMesh({ type }) {
-    const meshRef = useRef();
-
-    const colors = {
-        success: "#10b981",
-        error: "#ef4444",
-        warning: "#f59e0b",
-        confirm: "#3b82f6"
-    };
-
-    const color = colors[type] || colors.confirm;
-
-    useFrame((state) => {
-        if (meshRef.current) {
-            meshRef.current.rotation.x = state.clock.getElapsedTime() * 0.5;
-            meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.5;
-        }
-    });
-
-    return (
-        <Float speed={2} rotationIntensity={1} floatIntensity={1}>
-            <Sphere ref={meshRef} args={[1, 32, 32]} scale={1.5}>
-                <MeshDistortMaterial
-                    color={color}
-                    emissive={color}
-                    emissiveIntensity={0.5}
-                    distort={0.4}
-                    speed={2}
-                    roughness={0}
-                />
-            </Sphere>
-        </Float>
-    );
-}
+import { useState } from 'react';
 
 export default function Popup({ isOpen, onClose, title, message, type = 'info', onConfirm }) {
     const [expanded, setExpanded] = useState(false);
@@ -43,6 +6,24 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
     if (!isOpen) return null;
 
     const isLong = message && message.length > 120;
+
+    const typeColors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        confirm: '#8B5CF6',
+        info: '#8B5CF6',
+    };
+    const accentColor = typeColors[type] || typeColors.info;
+
+    const typeIcons = {
+        success: 'check_circle',
+        error: 'error',
+        warning: 'warning',
+        confirm: 'help_outline',
+        info: 'info',
+    };
+    const icon = typeIcons[type] || typeIcons.info;
 
     return (
         <>
@@ -55,45 +36,42 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 10000,
-                backdropFilter: 'blur(5px)'
+                backdropFilter: 'blur(5px)',
             }} onClick={onClose}>
                 <div style={{
                     position: 'relative',
                     width: '90%',
                     maxWidth: '500px',
-                    backgroundColor: 'rgba(20, 20, 20, 0.8)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.92)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     borderRadius: '16px',
                     padding: '2rem',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                    boxShadow: `0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px ${accentColor}15`,
                     color: 'white',
                     overflow: 'hidden',
-                    animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                    animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 }} onClick={(e) => e.stopPropagation()}>
 
-                    {/* 3D Background Element */}
+                    {/* Accent glow circle (lightweight CSS replacement for 3D sphere) */}
                     <div style={{
                         position: 'absolute',
-                        top: '-50px', right: '-50px',
-                        width: '200px', height: '200px',
-                        opacity: 0.5,
-                        pointerEvents: 'none'
-                    }}>
-                        <Canvas>
-                            <ambientLight intensity={1} />
-                            <pointLight position={[10, 10, 10]} />
-                            <PopupMesh type={type} />
-                        </Canvas>
-                    </div>
+                        top: '-40px', right: '-40px',
+                        width: '160px', height: '160px',
+                        borderRadius: '50%',
+                        background: `radial-gradient(circle, ${accentColor}30 0%, transparent 70%)`,
+                        filter: 'blur(20px)',
+                        pointerEvents: 'none',
+                    }} />
 
-                    <h2 style={{
-                        marginTop: 0,
-                        marginBottom: '1rem',
-                        fontSize: '1.5rem',
-                        fontWeight: 'bold',
-                        position: 'relative',
-                        zIndex: 1
-                    }}>{title}</h2>
+                    {/* Icon + Title */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', position: 'relative', zIndex: 1 }}>
+                        <span className="material-icons" style={{ fontSize: '1.5rem', color: accentColor }}>{icon}</span>
+                        <h2 style={{
+                            margin: 0,
+                            fontSize: '1.3rem',
+                            fontWeight: 'bold',
+                        }}>{title}</h2>
+                    </div>
 
                     {/* Message with overflow handling */}
                     <div style={{ position: 'relative', zIndex: 1, marginBottom: '2rem' }}>
@@ -108,7 +86,7 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                             whiteSpace: 'pre-wrap',
                             paddingRight: '4px',
                             scrollbarWidth: 'thin',
-                            scrollbarColor: 'rgba(255,255,255,0.2) transparent'
+                            scrollbarColor: 'rgba(255,255,255,0.2) transparent',
                         }}>{message}</p>
                         {isLong && (
                             <button
@@ -123,7 +101,7 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                                     padding: 0,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    gap: '4px',
                                 }}
                             >
                                 <span className="material-icons" style={{ fontSize: '14px' }}>open_in_full</span>
@@ -137,7 +115,7 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                         justifyContent: 'flex-end',
                         gap: '1rem',
                         position: 'relative',
-                        zIndex: 1
+                        zIndex: 1,
                     }}>
                         {type === 'confirm' ? (
                             <>
@@ -151,7 +129,7 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                                         color: 'white',
                                         cursor: 'pointer',
                                         fontWeight: '500',
-                                        transition: 'all 0.2s'
+                                        transition: 'all 0.2s',
                                     }}
                                     onMouseOver={(e) => e.target.style.backgroundColor = '#27272a'}
                                     onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
@@ -169,7 +147,7 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                                         cursor: 'pointer',
                                         fontWeight: '500',
                                         boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.2)',
-                                        transition: 'all 0.2s'
+                                        transition: 'all 0.2s',
                                     }}
                                     onMouseOver={(e) => e.target.style.backgroundColor = '#dc2626'}
                                     onMouseOut={(e) => e.target.style.backgroundColor = '#ef4444'}
@@ -182,17 +160,17 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                                 onClick={onClose}
                                 style={{
                                     padding: '0.75rem 1.5rem',
-                                    backgroundColor: '#3b82f6',
+                                    backgroundColor: '#8B5CF6',
                                     border: 'none',
                                     borderRadius: '8px',
                                     color: 'white',
                                     cursor: 'pointer',
                                     fontWeight: '500',
-                                    boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.2)',
-                                    transition: 'all 0.2s'
+                                    boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.2)',
+                                    transition: 'all 0.2s',
                                 }}
-                                onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
-                                onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
+                                onMouseOver={(e) => e.target.style.backgroundColor = '#7C3AED'}
+                                onMouseOut={(e) => e.target.style.backgroundColor = '#8B5CF6'}
                             >
                                 Okay
                             </button>
@@ -225,7 +203,7 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                         justifyContent: 'center',
                         zIndex: 20000,
                         backdropFilter: 'blur(8px)',
-                        animation: 'expandIn 0.2s ease'
+                        animation: 'expandIn 0.2s ease',
                     }}
                 >
                     <div
@@ -234,14 +212,14 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                             width: '90%',
                             maxWidth: '700px',
                             maxHeight: '80vh',
-                            backgroundColor: 'rgba(15, 15, 20, 0.95)',
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
                             border: '1px solid rgba(255,255,255,0.15)',
                             borderRadius: '20px',
                             padding: '2.5rem',
                             overflowY: 'auto',
                             color: 'white',
                             boxShadow: '0 30px 60px rgba(0,0,0,0.7)',
-                            animation: 'expandIn 0.2s ease'
+                            animation: 'expandIn 0.2s ease',
                         }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -260,7 +238,7 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     fontSize: '18px',
-                                    flexShrink: 0
+                                    flexShrink: 0,
                                 }}
                             >×</button>
                         </div>
@@ -270,7 +248,7 @@ export default function Popup({ isOpen, onClose, title, message, type = 'info', 
                             lineHeight: '1.8',
                             fontSize: '1rem',
                             wordBreak: 'break-word',
-                            whiteSpace: 'pre-wrap'
+                            whiteSpace: 'pre-wrap',
                         }}>{message}</p>
                     </div>
                 </div>

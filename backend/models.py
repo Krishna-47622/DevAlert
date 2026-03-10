@@ -33,8 +33,11 @@ class User(db.Model):
     two_factor_secret = db.Column(db.String(32), nullable=True)
     
     # OAuth Integration
-    oauth_provider = db.Column(db.String(20), nullable=True)  # 'google', 'github', or None
+    oauth_provider = db.Column(db.String(20), nullable=True)  # 'google', 'github', 'firebase_phone', or None
     oauth_provider_id = db.Column(db.String(255), nullable=True)  # Provider's user ID
+    
+    # Phone Authentication
+    phone_number = db.Column(db.String(20), unique=True, nullable=True)
     
     # Personalization & Restrictions
     full_name = db.Column(db.String(150), nullable=True)
@@ -77,12 +80,14 @@ class User(db.Model):
             'email_verified': self.email_verified,
             'two_factor_enabled': self.two_factor_enabled,
             'oauth_provider': self.oauth_provider,
+            'phone_number': self.phone_number,
             'full_name': self.full_name,
             'display_name': self.display_name,
             'theme_preference': self.theme_preference,
             'resume_text': self.resume_text,
             'resume_link': self.resume_link,
             'resume_updated_at': self.resume_updated_at.isoformat() if self.resume_updated_at else None,
+            'has_password': bool(self.password_hash),
             'created_at': self.created_at.isoformat()
         }
 
@@ -322,3 +327,30 @@ class TrackedEvent(db.Model):
             data['event_details'] = {'error': str(e)}
             
         return data
+
+
+class AppSetting(db.Model):
+    """Key-value store for app settings that must persist across restarts"""
+    __tablename__ = 'app_settings'
+
+    key = db.Column(db.String(100), primary_key=True)
+    value = db.Column(db.String(500), nullable=False, default='')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @classmethod
+    def get(cls, key, default=None):
+        """Get a setting value by key"""
+        row = cls.query.get(key)
+        return row.value if row else default
+
+    @classmethod
+    def set(cls, key, value):
+        """Set a setting value (upsert)"""
+        row = cls.query.get(key)
+        if row:
+            row.value = str(value)
+        else:
+            row = cls(key=key, value=str(value))
+            db.session.add(row)
+        db.session.commit()
+        return row

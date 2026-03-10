@@ -38,6 +38,12 @@ class Config:
             os.makedirs(instance_path, exist_ok=True)
         SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', f'sqlite:///{os.path.join(instance_path, "devalert.db")}')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+        'pool_timeout': 30,
+        'connect_args': {'sslmode': 'require'}
+    }
     
     # JWT settings
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', SECRET_KEY)
@@ -77,6 +83,9 @@ class Config:
     # OAuth - GitHub
     GITHUB_OAUTH_CLIENT_ID = os.getenv('GITHUB_OAUTH_CLIENT_ID', '')
     GITHUB_OAUTH_CLIENT_SECRET = os.getenv('GITHUB_OAUTH_CLIENT_SECRET', '')
+    
+    # Firebase (Phone Auth)
+    FIREBASE_SERVICE_ACCOUNT_KEY = os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY', '')
     
     # CORS settings
     CORS_ORIGINS = ['http://localhost:5173', 'http://localhost:5000']

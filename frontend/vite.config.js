@@ -12,7 +12,6 @@ export default defineConfig({
         manualChunks: {
           // Split vendor libs into separate chunks
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
           'motion-vendor': ['framer-motion'],
         }
       }

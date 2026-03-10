@@ -71,8 +71,8 @@ export default function ApplicantPage() {
 
     const fetchOpportunities = async () => {
         try {
-            const hackathonsResponse = await hackathonsAPI.getAll({ status: 'approved' });
-            const internshipsResponse = await internshipsAPI.getAll({ status: 'approved' });
+            const hackathonsResponse = await hackathonsAPI.getAll({ status: 'approved', sort_by: 'deadline', order: 'desc' });
+            const internshipsResponse = await internshipsAPI.getAll({ status: 'approved', sort_by: 'deadline', order: 'desc' });
 
             setOpportunities({
                 hackathons: hackathonsResponse.data,
@@ -239,78 +239,50 @@ export default function ApplicantPage() {
                                             key={hackathon.id}
                                             ref={isHighlighted ? highlightedCardRef : null}
                                             style={isHighlighted ? {
-                                                border: '2px solid var(--primary-color)',
-                                                boxShadow: '0 0 20px rgba(var(--primary-color-rgb), 0.3)',
-                                                transition: 'all 0.3s ease'
+                                                borderColor: 'var(--primary)',
+                                                transform: 'translateY(-4px)'
                                             } : {}}
                                         >
-                                            <CardHeader>{hackathon.title}</CardHeader>
+                                            <CardHeader subtitle={hackathon.organizer}>{hackathon.title}</CardHeader>
                                             <CardBody>
-                                                <p><strong>Organizer:</strong> {hackathon.organizer}</p>
-                                                <p><strong>Location:</strong> {hackathon.location}</p>
-                                                <p><strong>Mode:</strong> <span className="badge badge-info">{hackathon.mode}</span></p>
-                                                <p><strong>Deadline:</strong> {new Date(hackathon.deadline).toLocaleDateString()}</p>
-                                                {hackathon.prize_pool && <p><strong>Prize:</strong> {hackathon.prize_pool}</p>}
+                                                <p><span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>location_on</span> {hackathon.location} · <strong>{hackathon.mode}</strong></p>
+                                                <p><span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>timer</span> Closes {new Date(hackathon.deadline).toLocaleDateString()}</p>
+                                                {hackathon.prize_pool && <p><span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>emoji_events</span> Prize: {hackathon.prize_pool}</p>}
                                             </CardBody>
-                                            <CardFooter>
-                                                <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.5rem' }}>
-                                                    <div style={{ display: 'flex', gap: '0.4rem', width: '100%' }}>
-                                                        <button
-                                                            onClick={() => openModal(hackathon, 'hackathon')}
-                                                            className="btn btn-secondary"
-                                                            style={{ flex: 1, padding: '0.4rem' }}
-                                                        >
-                                                            Details
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleTrack(hackathon, 'hackathon')}
-                                                            className="btn btn-outline"
-                                                            style={{ flex: 1, padding: '0.4rem', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
-                                                        >
-                                                            Track
-                                                        </button>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => handleApply({ ...hackathon, type: 'hackathon' })}
-                                                        className="btn btn-primary"
-                                                        style={{ width: '100%', padding: '0.5rem' }}
-                                                    >
-                                                        Apply Now
-                                                    </button>
-                                                    {user && user.resume_text ? (
-                                                        <div className="ai-match-preview" style={{
-                                                            background: 'rgba(var(--primary-color-rgb), 0.1)',
-                                                            border: '1px dashed var(--primary-color)',
-                                                            borderRadius: '8px',
-                                                            padding: '0.5rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            gap: '8px',
-                                                            fontSize: '0.8rem',
-                                                            cursor: 'pointer'
-                                                        }} onClick={() => handleTrack(hackathon, 'hackathon')}>
-                                                            <span className="material-icons" style={{ fontSize: '18px', color: 'var(--primary-color)' }}>psychology</span>
-                                                            <span style={{ fontWeight: 600 }}>Track to see AI Match Score</span>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="ai-match-preview" style={{
-                                                            background: 'rgba(255, 255, 255, 0.05)',
-                                                            border: '1px solid #444',
-                                                            borderRadius: '8px',
-                                                            padding: '0.5rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            gap: '8px',
-                                                            fontSize: '0.8rem',
-                                                            opacity: 0.7
-                                                        }} onClick={() => navigate('/settings')}>
-                                                            <span className="material-icons" style={{ fontSize: '18px' }}>description</span>
-                                                            <span>Add Resume for AI Match</span>
-                                                        </div>
-                                                    )}
+
+                                            {user && user.resume_text ? (
+                                                <div className="premium-card-ai-match" style={{ cursor: 'pointer' }} onClick={() => handleTrack(hackathon, 'hackathon')}>
+                                                    <p className="premium-card-ai-match-label">AI Match</p>
+                                                    <p className="premium-card-ai-match-text">Click Track to see AI Match score</p>
                                                 </div>
+                                            ) : (
+                                                <div className="premium-card-ai-match" style={{ cursor: 'pointer' }} onClick={() => navigate('/settings')}>
+                                                    <p className="premium-card-ai-match-label">AI Match</p>
+                                                    <p className="premium-card-ai-match-text">Add Resume for AI Match</p>
+                                                </div>
+                                            )}
+
+                                            <CardFooter>
+                                                <div className="premium-card-actions-row">
+                                                    <button
+                                                        onClick={() => openModal(hackathon, 'hackathon')}
+                                                        className="premium-btn-secondary"
+                                                    >
+                                                        Details
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleTrack(hackathon, 'hackathon')}
+                                                        className="premium-btn-secondary"
+                                                    >
+                                                        Track
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleApply({ ...hackathon, type: 'hackathon' })}
+                                                    className="premium-btn-primary"
+                                                >
+                                                    Apply Now
+                                                </button>
                                             </CardFooter>
                                         </Card>
                                     );
@@ -354,78 +326,51 @@ export default function ApplicantPage() {
                                             key={internship.id}
                                             ref={isHighlighted ? highlightedCardRef : null}
                                             style={isHighlighted ? {
-                                                border: '2px solid var(--primary-color)',
-                                                boxShadow: '0 0 20px rgba(var(--primary-color-rgb), 0.3)',
-                                                transition: 'all 0.3s ease'
+                                                borderColor: 'var(--primary)',
+                                                transform: 'translateY(-4px)'
                                             } : {}}
                                         >
-                                            <CardHeader>{internship.title}</CardHeader>
+                                            <CardHeader subtitle={internship.company}>{internship.title}</CardHeader>
                                             <CardBody>
-                                                <p><strong>Company:</strong> {internship.company}</p>
-                                                <p><strong>Location:</strong> {internship.location}</p>
-                                                <p><strong>Mode:</strong> <span className="badge badge-info">{internship.mode}</span></p>
-                                                <p><strong>Duration:</strong> {internship.duration}</p>
-                                                {internship.stipend && <p><strong>Stipend:</strong> {internship.stipend}</p>}
+                                                <p><span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>location_on</span> {internship.location} · <strong>{internship.mode}</strong></p>
+                                                <p><span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>timer</span> Closes {new Date(internship.deadline).toLocaleDateString()}</p>
+                                                {internship.duration && <p><span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>schedule</span> Duration: {internship.duration}</p>}
+                                                {internship.stipend && <p><span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>payments</span> Stipend: {internship.stipend}</p>}
                                             </CardBody>
-                                            <CardFooter>
-                                                <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.5rem' }}>
-                                                    <div style={{ display: 'flex', gap: '0.4rem', width: '100%' }}>
-                                                        <button
-                                                            onClick={() => openModal(internship, 'internship')}
-                                                            className="btn btn-secondary"
-                                                            style={{ flex: 1, padding: '0.4rem' }}
-                                                        >
-                                                            Details
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleTrack(internship, 'internship')}
-                                                            className="btn btn-outline"
-                                                            style={{ flex: 1, padding: '0.4rem', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
-                                                        >
-                                                            Track
-                                                        </button>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => handleApply({ ...internship, type: 'internship' })}
-                                                        className="btn btn-primary"
-                                                        style={{ width: '100%', padding: '0.5rem' }}
-                                                    >
-                                                        Apply Now
-                                                    </button>
-                                                    {user && user.resume_text ? (
-                                                        <div className="ai-match-preview" style={{
-                                                            background: 'rgba(var(--primary-color-rgb), 0.1)',
-                                                            border: '1px dashed var(--primary-color)',
-                                                            borderRadius: '8px',
-                                                            padding: '0.5rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            gap: '8px',
-                                                            fontSize: '0.8rem',
-                                                            cursor: 'pointer'
-                                                        }} onClick={() => handleTrack(internship, 'internship')}>
-                                                            <span className="material-icons" style={{ fontSize: '18px', color: 'var(--primary-color)' }}>psychology</span>
-                                                            <span style={{ fontWeight: 600 }}>Track to see AI Match Score</span>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="ai-match-preview" style={{
-                                                            background: 'rgba(255, 255, 255, 0.05)',
-                                                            border: '1px solid #444',
-                                                            borderRadius: '8px',
-                                                            padding: '0.5rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            gap: '8px',
-                                                            fontSize: '0.8rem',
-                                                            opacity: 0.7
-                                                        }} onClick={() => navigate('/settings')}>
-                                                            <span className="material-icons" style={{ fontSize: '18px' }}>description</span>
-                                                            <span>Add Resume for AI Match</span>
-                                                        </div>
-                                                    )}
+
+                                            {user && user.resume_text ? (
+                                                <div className="premium-card-ai-match" style={{ cursor: 'pointer' }} onClick={() => handleTrack(internship, 'internship')}>
+                                                    <p className="premium-card-ai-match-label">AI Match</p>
+                                                    <p className="premium-card-ai-match-text">Click Track to see AI Match score</p>
                                                 </div>
+                                            ) : (
+                                                <div className="premium-card-ai-match" style={{ cursor: 'pointer' }} onClick={() => navigate('/settings')}>
+                                                    <p className="premium-card-ai-match-label">AI Match</p>
+                                                    <p className="premium-card-ai-match-text">Add Resume for AI Match</p>
+                                                </div>
+                                            )}
+
+                                            <CardFooter>
+                                                <div className="premium-card-actions-row">
+                                                    <button
+                                                        onClick={() => openModal(internship, 'internship')}
+                                                        className="premium-btn-secondary"
+                                                    >
+                                                        Details
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleTrack(internship, 'internship')}
+                                                        className="premium-btn-secondary"
+                                                    >
+                                                        Track
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleApply({ ...internship, type: 'internship' })}
+                                                    className="premium-btn-primary"
+                                                >
+                                                    Apply Now
+                                                </button>
                                             </CardFooter>
                                         </Card>
                                     );

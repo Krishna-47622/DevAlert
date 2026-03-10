@@ -49,16 +49,32 @@ Thumbs.db
 *.log
 logs/
 
-# Test files
+# Test/Utility files (Secret-prone)
 debug_output.txt
 api_result.txt
 test_api*.py
 verify_key.py
 debug_key.py
+debug_scan.py
 test_key.py
 test_gemini*.py
+test_models*.py
+test_scraper.py
 check_db_data.py
 test_match_live.py
 test_pg_connection.py
 migrate_to_supabase.py
 create_supabase_tables.py
+fix_*.py
+ultimate_db_fix.py
+verify_all_dbs.py
+test_direct_db.py
+check_supabase_status.py
+diagnose_db.py
+migrate_account_features.py
+migrate_user_settings.py
+patch_db.py
+setup_db.py
+*.bak
+*.tmp
+temp_*

@@ -8,7 +8,7 @@ try:
     import google.generativeai as genai
     SDK_AVAILABLE = True
 except Exception as e:
-    print(f"⚠️ AI SDK Warning: Failed to load google-generativeai. This is likely due to Python 3.14 incompatibility. AI features will use REST fallback. Error: {e}")
+    print(f"[Warning] AI SDK Warning: Failed to load google-generativeai. This is likely due to Python 3.14 incompatibility. AI features will use REST fallback. Error: {e}")
     SDK_AVAILABLE = False
 
 from datetime import datetime
@@ -141,7 +141,7 @@ class MatchService:
             
             try:
                 print(f"DEBUG: Attempting REST Generation with {model_name}")
-                response = requests.post(url, headers=headers, json=payload, timeout=30)
+                response = requests.post(url, headers=headers, json=payload, timeout=10)
                 if response.status_code != 200:
                     continue
                 
@@ -182,7 +182,7 @@ class MatchService:
                 
                 print(f"DEBUG: Attempting REST Match with Model: {model_name} (v1beta)")
                 try:
-                    response = requests.post(url, headers=headers, json=payload, timeout=30)
+                    response = requests.post(url, headers=headers, json=payload, timeout=10)
                     
                     if response.status_code == 404:
                         print(f"Model {model_name} (v1beta) not found (404).")
@@ -195,11 +195,17 @@ class MatchService:
                         last_error = f"403 Forbidden: {err_body}"
                         continue
                     
+                    if response.status_code == 429:
+                        import time
+                        err_body = response.text[:300]
+                        print(f"429 Quota exhausted for {model_name}: {err_body}. Waiting 2s before next model...")
+                        last_error = f"429 Quota Exhausted: {model_name}"
+                        time.sleep(2)
+                        continue
+                    
                     if response.status_code == 400:
                          print(f"Bad Request for {model_name} (v1beta): {response.text}")
                          last_error = f"400 Bad Request: {model_name} (v1beta)"
-                         # Don't continue if it's a bad request (key/parameter issue), usually fatal unless model specific
-                         # But we'll try others just in case
                          continue
 
                     print(f"DEBUG: Response Status: {response.status_code}")
@@ -226,6 +232,8 @@ class MatchService:
         
         # If all models fail
         print(f"All Gemini models failed. Last error: {last_error}")
+        if '429' in str(last_error) or 'Quota' in str(last_error):
+            return 50, "AI quota temporarily exhausted. Score is estimated using keyword matching. Try again in a few minutes."
         return self._calculate_fallback_score(resume_text, opportunity_details, error_details=f"{last_error} (Key: {masked_key})")
 
     def _parse_ai_response(self, text):

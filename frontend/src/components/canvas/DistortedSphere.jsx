@@ -42,8 +42,8 @@ export default function DistortedSphere() {
         }}>
             <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
                 <ambientLight intensity={0.5} />
-                <directionalLight position={[10, 10, 5]} intensity={1.5} color="#6366f1" />
-                <directionalLight position={[-10, -10, -5]} intensity={1} color="#0ea5e9" />
+                <directionalLight position={[10, 10, 5]} intensity={1.5} color="#8b5cf6" />
+                <directionalLight position={[-10, -10, -5]} intensity={1} color="#a855f7" />
                 <pointLight position={[0, -10, 0]} intensity={0.5} color="white" />
                 <AnimatedSphere />
             </Canvas>

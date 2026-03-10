@@ -22,9 +22,9 @@ def seed_data():
         # Create admin user
         print("Creating admin user...")
         admin = User(
-            username='Krishna',
+            username='admin_dev',
             email='krishna@example.com',
-            password_hash=generate_password_hash('1234'),
+            password_hash=generate_password_hash('Krishna@6969'),
             role='admin'
         )
         db.session.add(admin)

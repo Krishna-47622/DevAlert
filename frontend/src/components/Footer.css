@@ -1,6 +1,6 @@
 .footer {
-    background-color: rgba(0, 0, 0, 0.4);
-    border-top: 1px solid var(--border-color);
+    background: rgba(5, 5, 10, 0.9);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
     padding: 60px 0 30px;
     margin-top: 100px;
     color: var(--text-secondary);
@@ -19,8 +19,9 @@
 
 .footer-brand p {
     margin-top: 15px;
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     line-height: 1.6;
+    color: var(--text-muted);
 }
 
 .footer-links {
@@ -31,26 +32,29 @@
 .footer-group h4 {
     color: var(--text-primary);
     margin-bottom: 20px;
-    font-size: 1rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    font-family: 'Space Grotesk', monospace;
 }
 
 .footer-group {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .footer-group a {
-    color: var(--text-secondary);
+    color: var(--text-muted);
     text-decoration: none;
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     transition: color 0.2s ease;
+    letter-spacing: 0.02em;
 }
 
 .footer-group a:hover {
-    color: var(--primary-color);
+    color: var(--text-primary);
 }
 
 .footer-bottom {
@@ -58,26 +62,31 @@
     justify-content: space-between;
     align-items: center;
     padding-top: 30px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .footer-bottom p {
-    font-size: 0.9rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'Space Grotesk', monospace;
 }
 
 .footer-social {
     display: flex;
-    gap: 20px;
+    gap: 16px;
 }
 
 .social-icon {
-    color: var(--text-secondary);
-    font-size: 1.2rem;
-    transition: color 0.2s ease;
+    color: var(--text-muted);
+    font-size: 1rem;
+    transition: all 0.2s ease;
 }
 
 .social-icon:hover {
-    color: var(--primary-color);
+    color: var(--text-primary);
+    transform: translateY(-2px);
 }
 
 @media (max-width: 768px) {

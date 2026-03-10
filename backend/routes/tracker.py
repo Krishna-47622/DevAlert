@@ -53,9 +53,12 @@ def add_to_tracker():
         db.session.add(tracked)
         db.session.flush() # Get ID for dictionary conversion
 
-        # Auto-calculate match if user has resume
+        # Commit the tracked event first (before any slow AI call)
+        db.session.commit()
+
+        # Auto-calculate match if user has resume (separate transaction)
         user = User.query.get(user_id)
-        if user.resume_text or user.resume_link:
+        if user and (user.resume_text or user.resume_link):
             try:
                 match_service = get_match_service()
                 
@@ -63,28 +66,34 @@ def add_to_tracker():
                 opportunity_details = {}
                 if event_type == 'hackathon':
                     event = Hackathon.query.get(event_id)
-                    opportunity_details = {'title': event.title, 'description': event.description, 'organizer': event.organizer}
+                    if event:
+                        opportunity_details = {'title': event.title, 'description': event.description, 'organizer': event.organizer}
                 else:
                     event = Internship.query.get(event_id)
-                    opportunity_details = {'title': event.title, 'description': event.description, 'company': event.company, 'skills_required': event.skills_required}
+                    if event:
+                        opportunity_details = {'title': event.title, 'description': event.description, 'company': event.company, 'skills_required': event.skills_required}
                 
-                score, explanation = match_service.calculate_score(
-                    user.resume_text, 
-                    opportunity_details,
-                    resume_link=user.resume_link
-                )
-                tracked.match_score = score
-                tracked.match_explanation = explanation
-                db.session.commit()
+                if opportunity_details:
+                    score, explanation = match_service.calculate_score(
+                        user.resume_text, 
+                        opportunity_details,
+                        resume_link=user.resume_link
+                    )
+                    # Re-fetch tracked item with a fresh connection
+                    tracked = TrackedEvent.query.get(tracked.id)
+                    if tracked:
+                        tracked.match_score = score
+                        tracked.match_explanation = explanation
+                        db.session.commit()
             except Exception as e:
                 print(f"Error in auto-match: {e}")
-                db.session.commit() # Still commit the basic addition
-        else:
-            db.session.commit()
+                db.session.rollback()
         
+        # Re-fetch for the response (fresh from DB)
+        tracked = TrackedEvent.query.get(tracked.id) if tracked else tracked
         return jsonify({
             'message': 'Added to tracker successfully',
-            'item': tracked.to_dict()
+            'item': tracked.to_dict() if tracked else {}
         }), 201
         
     except Exception as e:
@@ -161,26 +170,40 @@ def calculate_match(id):
             
         if not user.resume_text and not user.resume_link:
             return jsonify({'error': 'Please add your resume text or a public link in Account Settings first.'}), 400
-            
-        match_service = get_match_service()
         
-        # Fetch event details
+        # Gather all data we need before making the slow API call
+        resume_text = user.resume_text
+        resume_link = user.resume_link
+        tracked_id = tracked.id
+        event_type = tracked.event_type
+        event_id = tracked.event_id
+        
         opportunity_details = {}
-        if tracked.event_type == 'hackathon':
-            event = Hackathon.query.get(tracked.event_id)
-            opportunity_details = {'title': event.title, 'description': event.description, 'organizer': event.organizer}
+        if event_type == 'hackathon':
+            event = Hackathon.query.get(event_id)
+            if event:
+                opportunity_details = {'title': event.title, 'description': event.description, 'organizer': event.organizer}
         else:
-            event = Internship.query.get(tracked.event_id)
-            opportunity_details = {'title': event.title, 'description': event.description, 'company': event.company, 'skills_required': event.skills_required}
-            
+            event = Internship.query.get(event_id)
+            if event:
+                opportunity_details = {'title': event.title, 'description': event.description, 'company': event.company, 'skills_required': event.skills_required}
+        
+        # Release DB connection before making the slow Gemini API call
+        db.session.close()
+        
+        match_service = get_match_service()
         score, explanation = match_service.calculate_score(
-            user.resume_text, 
+            resume_text, 
             opportunity_details,
-            resume_link=user.resume_link
+            resume_link=resume_link
         )
-        tracked.match_score = score
-        tracked.match_explanation = explanation
-        db.session.commit()
+        
+        # Re-fetch with fresh connection and update
+        tracked = TrackedEvent.query.get(tracked_id)
+        if tracked:
+            tracked.match_score = score
+            tracked.match_explanation = explanation
+            db.session.commit()
         
         return jsonify({
             'message': 'Match score calculated',

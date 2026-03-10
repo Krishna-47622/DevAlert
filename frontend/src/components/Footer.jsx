@@ -26,7 +26,12 @@ export default function Footer() {
                             <h4>Support</h4>
                             <Link to="/settings">Settings</Link>
                             <Link to="/notifications">Notifications</Link>
+                            <Link to="/help">Help</Link>
                             <a href="mailto:support@devalert.com">Contact</a>
+                        </div>
+                        <div className="footer-group">
+                            <h4>Legal</h4>
+                            <Link to="/privacy-policy">Privacy Policy</Link>
                         </div>
                     </div>
                 </div>

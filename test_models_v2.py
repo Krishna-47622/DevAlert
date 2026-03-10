@@ -5,7 +5,7 @@ import sys
 # Force unbuffered output
 sys.stdout.reconfigure(line_buffering=True)
 
-API_KEY = "AIzaSyBAOuQXLB7ES2HD1hQJ3snGoirizDJfpU0"
+API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 print(f"Testing with API Key: {API_KEY[:10]}...")
 

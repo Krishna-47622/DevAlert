@@ -145,7 +145,9 @@ export default function Tracker() {
                     <span className={`event-type-badge ${event_type}`}>
                         {event_type === 'hackathon' ? 'Hackathon' : 'Internship'}
                     </span>
-                    <button className="delete-btn" onClick={() => handleDelete(id)} title="Remove">×</button>
+                    <button className="delete-btn" onClick={() => handleDelete(id)} title="Remove">
+                        <span className="material-icons" style={{ fontSize: '1.2rem' }}>close</span>
+                    </button>
                 </div>
                 <h4 className="tracker-card-title">{event_details.title}</h4>
                 <p className="tracker-card-subtitle">{event_details.organizer || event_details.company}</p>
@@ -231,7 +233,9 @@ export default function Tracker() {
                         <div key={column.id} className={`tracker-section ${isExpanded ? 'expanded' : 'collapsed'}`}>
                             <div className="section-header" onClick={() => toggleSection(column.id)}>
                                 <div className="section-title-wrapper">
-                                    <span className={`toggle-icon ${isExpanded ? 'rotated' : ''}`}>▼</span>
+                                    <span className={`material-icons ${isExpanded ? 'rotated' : ''}`} style={{ fontSize: '1.2rem', color: 'var(--color-text-secondary)', transition: 'transform 0.3s ease' }}>
+                                        expand_more
+                                    </span>
                                     <h3>{column.title}</h3>
                                     <span className="count">{columnItems.length}</span>
                                 </div>

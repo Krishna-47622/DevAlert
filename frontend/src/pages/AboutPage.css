@@ -50,44 +50,37 @@
     font-size: 1.1rem;
 }
 
-.team-grid {
+.about-details-section {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: 30px;
-    padding: 20px;
+    margin-bottom: 80px;
 }
 
-.team-card {
-    padding: 30px;
-    text-align: center;
+.about-card {
+    padding: 40px;
     transition: transform 0.3s ease;
+    text-align: left;
+    line-height: 1.8;
 }
 
-.member-avatar {
-    width: 100px;
-    height: 100px;
-    margin: 0 auto 20px;
-    border-radius: 50%;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid var(--primary-color);
-}
-
-.member-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.team-card h3 {
-    margin-bottom: 10px;
-    font-size: 1.2rem;
-}
-
-.role {
-    font-size: 0.9rem;
+.about-card h2 {
     color: var(--primary-color);
-    font-weight: 500;
+    margin-bottom: 20px;
+}
+
+.about-card ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.about-card li {
+    font-size: 1.05rem;
+    color: var(--text-primary);
 }
 
 .mru-badge {

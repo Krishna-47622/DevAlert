@@ -60,6 +60,11 @@ export const authAPI = {
     // OAuth
     oauthGoogle: () => window.location.href = '/api/auth/oauth/google',
     oauthGitHub: () => window.location.href = '/api/auth/oauth/github',
+
+    // Phone Auth (Firebase)
+    phoneLogin: (idToken, fullName, username) => api.post('/auth/phone-login', { id_token: idToken, full_name: fullName || '', username: username || '' }),
+    updateEmail: (email) => api.post('/auth/update-email', { email }),
+    setPassword: (newPassword) => api.post('/auth/set-password', { new_password: newPassword }),
 };
 
 // Hackathons API

@@ -1,14 +1,6 @@
 import { motion } from 'framer-motion';
 import './AboutPage.css';
 
-const teamMembers = [
-    { name: "Team Lead", role: "Full Stack Developer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Marcus&backgroundColor=transparent" },
-    { name: "Team Member 1", role: "Frontend Specialist", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Aneka&backgroundColor=transparent" },
-    { name: "Team Member 2", role: "UI/UX Designer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Cali&backgroundColor=transparent" },
-    { name: "Team Member 3", role: "Backend Developer", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Dora&backgroundColor=transparent" },
-    { name: "Team Member 4", role: "Researcher & Content", image: "https://api.dicebear.com/7.x/lorelei/svg?seed=Felix&backgroundColor=transparent" },
-];
-
 export default function AboutPage() {
     return (
         <div className="about-container">
@@ -37,35 +29,37 @@ export default function AboutPage() {
                 </p>
             </motion.div>
 
-            <div className="team-section">
-                <motion.h2
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
+            <div className="about-details-section">
+                <motion.div
+                    className="about-card glass-card"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                 >
-                    The Brains Behind DevAlert
-                </motion.h2>
-                <p className="mru-text">A team of 5 1st year Btech students from <strong>Malla Reddy University</strong>.</p>
+                    <h2>Our Vision</h2>
+                    <p>
+                        To create a seamless ecosystem where student developers can easily discover
+                        and track hackathons, internships, and tech events without navigating through
+                        cluttered boards. We aim to become the central hub for the developer community's
+                        growth, ensuring no talented individual misses an opportunity simply because they didn't know about it in time.
+                    </p>
+                </motion.div>
 
-                <div className="team-grid">
-                    {teamMembers.map((member, index) => (
-                        <motion.div
-                            key={index}
-                            className="team-card glass-card"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            whileInView={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.1 }}
-                            viewport={{ once: true }}
-                            whileHover={{ y: -10 }}
-                        >
-                            <div className="member-avatar">
-                                <img src={member.image} alt={member.name} />
-                            </div>
-                            <h3>{member.name}</h3>
-                            <p className="role">{member.role}</p>
-                        </motion.div>
-                    ))}
-                </div>
+                <motion.div
+                    className="about-card glass-card"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 }}
+                >
+                    <h2>Why DevAlert?</h2>
+                    <ul>
+                        <li><span className="material-icons" style={{ fontSize: '1.2rem', verticalAlign: 'middle', marginRight: '8px', color: 'var(--primary-color)' }}>auto_awesome</span> <strong>AI-Powered Web Scanning</strong> - Automatically fetching the latest active opportunities from across the web.</li>
+                        <li><span className="material-icons" style={{ fontSize: '1.2rem', verticalAlign: 'middle', marginRight: '8px', color: 'var(--primary-color)' }}>target</span> <strong>Smart Resume Matching</strong> - Evaluating your skills to show how well you match a role instantly.</li>
+                        <li><span className="material-icons" style={{ fontSize: '1.2rem', verticalAlign: 'middle', marginRight: '8px', color: 'var(--primary-color)' }}>speed</span> <strong>Automated Cleanups</strong> - Ensuring expired opportunities vanish so you only see what's active.</li>
+                        <li><span className="material-icons" style={{ fontSize: '1.2rem', verticalAlign: 'middle', marginRight: '8px', color: 'var(--primary-color)' }}>dashboard</span> <strong>Seamless Dashboard</strong> - Tracking your applications and saved events in an organized cockpit.</li>
+                    </ul>
+                </motion.div>
             </div>
 
             <motion.div

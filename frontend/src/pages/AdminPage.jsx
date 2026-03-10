@@ -138,7 +138,7 @@ export default function AdminPage() {
             const response = await adminAPI.toggleAutoApprove(newState);
             setAutoApproveEnabled(response.data.enabled);
             showPopup(
-                response.data.enabled ? '✅ Auto-Approve Enabled' : '⏸ Auto-Approve Disabled',
+                response.data.enabled ? 'Auto-Approve Enabled' : 'Auto-Approve Disabled',
                 response.data.message,
                 'success'
             );
@@ -472,8 +472,8 @@ export default function AdminPage() {
                         whileTap={{ scale: 0.98 }}
                         style={{
                             background: isScanning
-                                ? 'rgba(99, 102, 241, 0.15)'
-                                : 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                                ? 'rgba(139, 92, 246, 0.15)'
+                                : 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
                             border: 'none',
                             padding: '0.85rem 1.75rem',
                             fontSize: '0.9rem',
@@ -481,7 +481,7 @@ export default function AdminPage() {
                             fontWeight: '600',
                             borderRadius: '12px',
                             letterSpacing: '0.5px',
-                            boxShadow: isScanning ? 'none' : '0 4px 15px rgba(99, 102, 241, 0.35)',
+                            boxShadow: isScanning ? 'none' : '0 4px 15px rgba(139, 92, 246, 0.35)',
                             opacity: isScanning ? 0.7 : 1,
                             cursor: isScanning ? 'wait' : 'pointer',
                             transition: 'all 0.3s ease',
@@ -630,7 +630,7 @@ export default function AdminPage() {
                                 padding: '0.75rem 1.5rem',
                                 background: selectionStage === 0 ? 'var(--color-bg-card)' :
                                     selectionStage === 1 ? 'var(--primary-color)' :
-                                        selectionStage === 2 ? '#6366f1' : // Indigo
+                                        selectionStage === 2 ? '#2563eb' : // Indigo
                                             selectionStage === 3 ? '#10b981' : // Success Green
                                                 '#f59e0b', // Warning Amber
                                 color: 'white',
@@ -642,7 +642,7 @@ export default function AdminPage() {
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 transition: 'all 0.3s ease',
-                                boxShadow: selectionStage > 0 ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none'
+                                boxShadow: selectionStage > 0 ? '0 4px 12px rgba(139, 92, 246, 0.2)' : 'none'
                             }}
                         >
                             <span className="material-icons">
@@ -795,7 +795,7 @@ export default function AdminPage() {
                         }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span className="material-icons" style={{ color: '#6366f1', fontSize: '20px' }}>table_chart</span>
+                            <span className="material-icons" style={{ color: '#2563eb', fontSize: '20px' }}>table_chart</span>
                             <h2 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: '700' }}>
                                 Hackathons
                                 <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: '#6b7280', fontWeight: '400' }}>
@@ -869,7 +869,7 @@ export default function AdminPage() {
                                                 }}
                                                 style={{
                                                     ...tableCellStyle,
-                                                    background: selectedItems.has(`hackathon-${hackathon.id}`) ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                                    background: selectedItems.has(`hackathon-${hackathon.id}`) ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
                                                     cursor: selectionStage > 0 ? 'pointer' : 'default',
                                                     transition: 'background 0.2s',
                                                     opacity: selectionStage === 0 ? 1 : (selectedItems.has(`hackathon-${hackathon.id}`) ? 1 : 0.7)
@@ -970,7 +970,7 @@ export default function AdminPage() {
                                                     }}
                                                     style={{
                                                         ...tableCellStyle,
-                                                        background: selectedItems.has(`internship-${internship.id}`) ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                                        background: selectedItems.has(`internship-${internship.id}`) ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
                                                         cursor: selectionStage > 0 ? 'pointer' : 'default',
                                                         transition: 'background 0.2s',
                                                         opacity: selectionStage === 0 ? 1 : (selectedItems.has(`internship-${internship.id}`) ? 1 : 0.7)
@@ -1199,6 +1199,6 @@ export default function AdminPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div >
+        </div>
     );
 }

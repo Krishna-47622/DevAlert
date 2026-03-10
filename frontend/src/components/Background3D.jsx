@@ -43,7 +43,7 @@ export default function Background3D() {
                 // Opacity based on depth
                 const alpha = Math.min(1, (width - this.z) / width);
 
-                ctx.fillStyle = `rgba(99, 102, 241, ${alpha})`; // Indigo glow
+                ctx.fillStyle = `rgba(14, 165, 233, ${alpha})`; // Blue glow
                 ctx.beginPath();
                 ctx.arc(x3d, y3d, size3d, 0, Math.PI * 2);
                 ctx.fill();

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { authAPI } from '../services/api';
 import Popup from '../components/Popup';
 import { motion } from 'framer-motion';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '../firebase';
 
 export default function AccountSettings() {
     const [user, setUser] = useState(null);
@@ -31,6 +32,26 @@ export default function AccountSettings() {
     const [resumeText, setResumeText] = useState('');
     const [resumeLink, setResumeLink] = useState('');
     const [resumeLoading, setResumeLoading] = useState(false);
+
+    // Phone verification state
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [phoneOtpCode, setPhoneOtpCode] = useState('');
+    const [phoneStep, setPhoneStep] = useState('input'); // 'input' | 'otp'
+    const [phoneLoading, setPhoneLoading] = useState(false);
+    const [phoneMessage, setPhoneMessage] = useState({ type: '', text: '' });
+    const [phoneConfirmation, setPhoneConfirmation] = useState(null);
+    const phoneRecaptchaRef = useRef(null);
+    const phoneRecaptchaVerifierRef = useRef(null);
+
+    // Add email state (for phone users)
+    const [newEmail, setNewEmail] = useState('');
+    const [emailUpdateLoading, setEmailUpdateLoading] = useState(false);
+    const [emailUpdateMessage, setEmailUpdateMessage] = useState({ type: '', text: '' });
+
+    // Set password state (for phone/OAuth users without password)
+    const [newPwdData, setNewPwdData] = useState({ newPassword: '', confirmPassword: '' });
+    const [newPwdLoading, setNewPwdLoading] = useState(false);
+    const [newPwdMessage, setNewPwdMessage] = useState({ type: '', text: '' });
 
     // Popup State
     const [popup, setPopup] = useState({
@@ -174,6 +195,59 @@ export default function AccountSettings() {
         }
     };
 
+    // Phone verification handlers
+    const handleSendPhoneOTP = async (e) => {
+        e.preventDefault();
+        setPhoneLoading(true);
+        setPhoneMessage({ type: '', text: '' });
+
+        if (!auth) {
+            setPhoneMessage({ type: 'error', text: 'Phone auth not configured.' });
+            setPhoneLoading(false);
+            return;
+        }
+
+        const formattedPhone = `+91${phoneNumber}`;
+        try {
+            if (phoneRecaptchaVerifierRef.current) {
+                phoneRecaptchaVerifierRef.current.clear();
+                phoneRecaptchaVerifierRef.current = null;
+            }
+            phoneRecaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'phone-recaptcha-settings', {
+                size: 'invisible',
+                callback: () => { },
+            });
+            const result = await signInWithPhoneNumber(auth, formattedPhone, phoneRecaptchaVerifierRef.current);
+            setPhoneConfirmation(result);
+            setPhoneStep('otp');
+            setPhoneMessage({ type: 'info', text: `OTP sent to ${formattedPhone}` });
+        } catch (err) {
+            setPhoneMessage({ type: 'error', text: err.message || 'Failed to send OTP' });
+        } finally {
+            setPhoneLoading(false);
+        }
+    };
+
+    const handleVerifyPhoneOTP = async (e) => {
+        e.preventDefault();
+        setPhoneLoading(true);
+        setPhoneMessage({ type: '', text: '' });
+        try {
+            const result = await phoneConfirmation.confirm(phoneOtpCode);
+            const idToken = await result.user.getIdToken();
+            // Send to backend to update user's phone number
+            await authAPI.phoneLogin(idToken);
+            setPhoneMessage({ type: 'success', text: 'Phone number verified and linked!' });
+            setPhoneStep('input');
+            setPhoneOtpCode('');
+            fetchUser(); // Refresh user data
+        } catch (err) {
+            setPhoneMessage({ type: 'error', text: err.response?.data?.error || err.message || 'Verification failed' });
+        } finally {
+            setPhoneLoading(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="container" style={{ paddingTop: '6rem', textAlign: 'center' }}>
@@ -297,32 +371,146 @@ export default function AccountSettings() {
                                     </p>
                                 </div>
 
+                                {/* Email */}
                                 <div>
                                     <label className="form-label">Email</label>
-                                    <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text)' }}>{user?.email}</p>
-                                    {!user?.email_verified && (
+                                    {user?.email?.includes('@phone.devalert.local') ? (
                                         <div style={{ marginTop: '0.5rem' }}>
-                                            <span className="badge" style={{ background: 'var(--color-warning)', color: '#000', marginRight: '0.5rem' }}>Unverified</span>
-                                            <button
-                                                onClick={handleResendVerification}
-                                                className="btn btn-secondary"
-                                                style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem' }}
-                                                disabled={emailVerificationLoading}
-                                            >
-                                                {emailVerificationLoading ? 'Sending...' : 'Resend Verification'}
-                                            </button>
-                                            {emailVerificationMessage.text && (
-                                                <div className={`alert alert-${emailVerificationMessage.type === 'success' ? 'success' : 'danger'}`} style={{ marginTop: '1rem' }}>
-                                                    <span className="material-icons">{emailVerificationMessage.type === 'success' ? 'check_circle' : 'error'}</span>
-                                                    <span>{emailVerificationMessage.text}</span>
+                                            {emailUpdateMessage.text && (
+                                                <div className={`alert alert-${emailUpdateMessage.type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '0.75rem' }}>
+                                                    <span className="material-icons" style={{ fontSize: '1rem' }}>{emailUpdateMessage.type === 'success' ? 'check_circle' : 'error'}</span>
+                                                    <span>{emailUpdateMessage.text}</span>
                                                 </div>
+                                            )}
+                                            <form onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                setEmailUpdateLoading(true);
+                                                setEmailUpdateMessage({ type: '', text: '' });
+                                                try {
+                                                    const response = await authAPI.updateEmail(newEmail);
+                                                    setUser(response.data.user);
+                                                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                                                    setEmailUpdateMessage({ type: 'success', text: 'Email added! Verification email sent.' });
+                                                    setNewEmail('');
+                                                } catch (err) {
+                                                    setEmailUpdateMessage({ type: 'error', text: err.response?.data?.error || 'Failed to update email' });
+                                                } finally {
+                                                    setEmailUpdateLoading(false);
+                                                }
+                                            }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                    <input type="email" className="form-input" style={{ flex: 1 }}
+                                                        value={newEmail}
+                                                        onChange={(e) => setNewEmail(e.target.value)}
+                                                        placeholder="Enter your email address" required />
+                                                    <button type="submit" className="btn btn-primary"
+                                                        style={{ padding: '0.55rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                                                        disabled={emailUpdateLoading || !newEmail.includes('@')}>
+                                                        {emailUpdateLoading ? 'Saving...' : 'Add Email'}
+                                                    </button>
+                                                </div>
+                                                <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)', marginTop: '0.4rem' }}>
+                                                    A verification link will be sent to this address.
+                                                </p>
+                                            </form>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text)' }}>{user?.email}</p>
+                                            {!user?.email_verified && (
+                                                <div style={{ marginTop: '0.5rem' }}>
+                                                    <span className="badge" style={{ background: 'var(--color-warning)', color: '#000', marginRight: '0.5rem' }}>Unverified</span>
+                                                    <button
+                                                        onClick={handleResendVerification}
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem' }}
+                                                        disabled={emailVerificationLoading}
+                                                    >
+                                                        {emailVerificationLoading ? 'Sending...' : 'Resend Verification'}
+                                                    </button>
+                                                    {emailVerificationMessage.text && (
+                                                        <div className={`alert alert-${emailVerificationMessage.type === 'success' ? 'success' : 'danger'}`} style={{ marginTop: '1rem' }}>
+                                                            <span className="material-icons">{emailVerificationMessage.type === 'success' ? 'check_circle' : 'error'}</span>
+                                                            <span>{emailVerificationMessage.text}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {user?.email_verified && (
+                                                <span className="badge" style={{ background: 'var(--color-success)', color: '#fff', marginTop: '0.5rem', display: 'inline-block' }}>Verified ✓</span>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Phone Number */}
+                                <div>
+                                    <label className="form-label">Phone Number</label>
+                                    {phoneMessage.text && (
+                                        <div className={`alert alert-${phoneMessage.type === 'success' ? 'success' : phoneMessage.type === 'info' ? 'info' : 'danger'}`} style={{ marginBottom: '0.75rem', marginTop: '0.5rem' }}>
+                                            <span className="material-icons" style={{ fontSize: '1rem' }}>{phoneMessage.type === 'success' ? 'check_circle' : phoneMessage.type === 'info' ? 'info' : 'error'}</span>
+                                            <span>{phoneMessage.text}</span>
+                                        </div>
+                                    )}
+                                    {user?.phone_number ? (
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                            <p style={{ margin: '0', color: 'var(--color-text)' }}>{user.phone_number}</p>
+                                            <span className="badge" style={{ background: 'var(--color-success)', color: '#fff', marginTop: '0.5rem', display: 'inline-block' }}>Verified ✓</span>
+                                        </div>
+                                    ) : (
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                            {phoneStep === 'input' && (
+                                                <form onSubmit={handleSendPhoneOTP} style={{ marginTop: '0.25rem' }}>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                        <span style={{
+                                                            padding: '0.55rem 0.65rem',
+                                                            background: 'rgba(255,255,255,0.05)',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRadius: 'var(--radius-md)',
+                                                            color: 'var(--color-text-secondary)',
+                                                            fontSize: '0.85rem',
+                                                        }}>+91</span>
+                                                        <input type="tel" className="form-input" style={{ flex: 1 }}
+                                                            value={phoneNumber}
+                                                            onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                                                            placeholder="10-digit number" maxLength="10" required />
+                                                        <button type="submit" className="btn btn-primary"
+                                                            style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}
+                                                            disabled={phoneLoading || phoneNumber.length < 10}>
+                                                            {phoneLoading ? <span className="loading"></span> : 'Verify'}
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            )}
+                                            {phoneStep === 'otp' && (
+                                                <form onSubmit={handleVerifyPhoneOTP} style={{ marginTop: '0.25rem' }}>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                        <input type="text" className="form-input"
+                                                            style={{ flex: 1, textAlign: 'center', fontSize: '1.1rem', letterSpacing: '0.3rem' }}
+                                                            value={phoneOtpCode}
+                                                            onChange={(e) => setPhoneOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                                                            placeholder="Enter OTP" maxLength="6" required autoFocus />
+                                                        <button type="submit" className="btn btn-primary"
+                                                            style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}
+                                                            disabled={phoneLoading || phoneOtpCode.length < 6}>
+                                                            {phoneLoading ? <span className="loading"></span> : 'Confirm'}
+                                                        </button>
+                                                        <button type="button" className="btn btn-secondary"
+                                                            style={{ padding: '0.55rem 0.75rem', fontSize: '0.85rem' }}
+                                                            onClick={() => { setPhoneStep('input'); setPhoneOtpCode(''); setPhoneMessage({ type: '', text: '' }); }}>
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                    <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)', marginTop: '0.4rem' }}>
+                                                        Code sent to +91{phoneNumber}
+                                                    </p>
+                                                </form>
                                             )}
                                         </div>
                                     )}
-                                    {user?.email_verified && (
-                                        <span className="badge" style={{ background: 'var(--color-success)', color: '#fff', marginTop: '0.5rem', display: 'inline-block' }}>Verified ✓</span>
-                                    )}
+                                    <div id="phone-recaptcha-settings" ref={phoneRecaptchaRef}></div>
                                 </div>
+
                                 <div>
                                     <label className="form-label">Role</label>
                                     <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text)', textTransform: 'capitalize' }}>{user?.role}</p>
@@ -339,6 +527,7 @@ export default function AccountSettings() {
                         </div>
                     </div>
                 )}
+
 
                 {/* Resume Tab */}
                 {activeTab === 'resume' && (
@@ -395,51 +584,104 @@ export default function AccountSettings() {
                 {activeTab === 'security' && (
                     <div className="card">
                         <div className="card-header">
-                            <h2>Change Password</h2>
+                            <h2>{!user?.has_password ? 'Set Password' : 'Change Password'}</h2>
                         </div>
                         <div className="card-body">
-                            {passwordMessage.text && (
-                                <div className={`alert alert-${passwordMessage.type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1.5rem' }}>
-                                    <span className="material-icons">{passwordMessage.type === 'success' ? 'check_circle' : 'error'}</span>
-                                    <span>{passwordMessage.text}</span>
-                                </div>
+                            {/* Set Password (phone/OAuth users without password) */}
+                            {!user?.has_password ? (
+                                <>
+                                    <div className="alert alert-info" style={{ marginBottom: '1.25rem' }}>
+                                        <span className="material-icons" style={{ fontSize: '1rem' }}>info</span>
+                                        <span>You signed in via phone/OAuth and don't have a password yet. Set one to enable email + password login.</span>
+                                    </div>
+                                    {newPwdMessage.text && (
+                                        <div className={`alert alert-${newPwdMessage.type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1.25rem' }}>
+                                            <span className="material-icons">{newPwdMessage.type === 'success' ? 'check_circle' : 'error'}</span>
+                                            <span>{newPwdMessage.text}</span>
+                                        </div>
+                                    )}
+                                    <form onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        if (newPwdData.newPassword !== newPwdData.confirmPassword) {
+                                            setNewPwdMessage({ type: 'error', text: 'Passwords do not match' });
+                                            return;
+                                        }
+                                        if (newPwdData.newPassword.length < 6) {
+                                            setNewPwdMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+                                            return;
+                                        }
+                                        setNewPwdLoading(true);
+                                        setNewPwdMessage({ type: '', text: '' });
+                                        try {
+                                            await authAPI.setPassword(newPwdData.newPassword);
+                                            setNewPwdMessage({ type: 'success', text: 'Password set successfully! You can now sign in with email + password.' });
+                                            setNewPwdData({ newPassword: '', confirmPassword: '' });
+                                            // Refresh user data so the UI switches to change-password mode
+                                            const res = await authAPI.getCurrentUser();
+                                            setUser(res.data);
+                                            localStorage.setItem('user', JSON.stringify(res.data));
+                                        } catch (err) {
+                                            setNewPwdMessage({ type: 'error', text: err.response?.data?.error || 'Failed to set password' });
+                                        } finally {
+                                            setNewPwdLoading(false);
+                                        }
+                                    }}>
+                                        <div className="form-group">
+                                            <label className="form-label">New Password</label>
+                                            <input type="password" className="form-input"
+                                                value={newPwdData.newPassword}
+                                                onChange={(e) => setNewPwdData({ ...newPwdData, newPassword: e.target.value })}
+                                                placeholder="Min. 6 characters" required />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Confirm Password</label>
+                                            <input type="password" className="form-input"
+                                                value={newPwdData.confirmPassword}
+                                                onChange={(e) => setNewPwdData({ ...newPwdData, confirmPassword: e.target.value })}
+                                                required />
+                                        </div>
+                                        <button type="submit" className="btn btn-primary" disabled={newPwdLoading}>
+                                            {newPwdLoading ? 'Setting...' : 'Set Password'}
+                                        </button>
+                                    </form>
+                                </>
+                            ) : (
+                                /* Change Password (users who already have a password) */
+                                <>
+                                    {passwordMessage.text && (
+                                        <div className={`alert alert-${passwordMessage.type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1.5rem' }}>
+                                            <span className="material-icons">{passwordMessage.type === 'success' ? 'check_circle' : 'error'}</span>
+                                            <span>{passwordMessage.text}</span>
+                                        </div>
+                                    )}
+                                    <form onSubmit={handlePasswordChange}>
+                                        <div className="form-group">
+                                            <label className="form-label">Current Password</label>
+                                            <input type="password" className="form-input"
+                                                value={passwordData.currentPassword}
+                                                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                                                required />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">New Password</label>
+                                            <input type="password" className="form-input"
+                                                value={passwordData.newPassword}
+                                                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                                required />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Confirm New Password</label>
+                                            <input type="password" className="form-input"
+                                                value={passwordData.confirmPassword}
+                                                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                                required />
+                                        </div>
+                                        <button type="submit" className="btn btn-primary" disabled={passwordLoading}>
+                                            {passwordLoading ? 'Changing...' : 'Change Password'}
+                                        </button>
+                                    </form>
+                                </>
                             )}
-
-                            <form onSubmit={handlePasswordChange}>
-                                <div className="form-group">
-                                    <label className="form-label">Current Password</label>
-                                    <input
-                                        type="password"
-                                        className="form-input"
-                                        value={passwordData.currentPassword}
-                                        onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">New Password</label>
-                                    <input
-                                        type="password"
-                                        className="form-input"
-                                        value={passwordData.newPassword}
-                                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Confirm New Password</label>
-                                    <input
-                                        type="password"
-                                        className="form-input"
-                                        value={passwordData.confirmPassword}
-                                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <button type="submit" className="btn btn-primary" disabled={passwordLoading}>
-                                    {passwordLoading ? <span className="loading"></span> : 'Change Password'}
-                                </button>
-                            </form>
                         </div>
                     </div>
                 )}

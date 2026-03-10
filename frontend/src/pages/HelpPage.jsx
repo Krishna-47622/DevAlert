@@ -8,7 +8,7 @@ export default function HelpPage() {
         fontSize: '1.2rem',
         verticalAlign: 'middle',
         marginRight: '8px',
-        color: '#a855f7' // Primary purple accent
+        color: '#A78BFA' // Primary purple accent
     };
 
     const faqs = [
@@ -233,7 +233,7 @@ export default function HelpPage() {
                     padding: '1rem 3rem',
                     borderRadius: '50px',
                     fontSize: '1.1rem',
-                    background: 'linear-gradient(135deg, var(--primary-color) 0%, #a855f7 100%)',
+                    background: 'linear-gradient(135deg, var(--primary-color) 0%, #C084FC 100%)',
                     border: 'none',
                     boxShadow: '0 4px 15px rgba(168, 85, 247, 0.4)'
                 }}>

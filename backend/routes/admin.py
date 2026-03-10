@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Hackathon, Internship, User, Notification, Application
+from models import db, Hackathon, Internship, User, Notification, Application, AppSetting
 from sqlalchemy import func
 import threading
 import sys
@@ -135,28 +135,29 @@ def reject_opportunity(opportunity_type, id):
 @admin_bp.route('/auto-approve/toggle', methods=['POST'])
 @jwt_required()
 def toggle_auto_approve():
-    """Enable or disable the scheduled 24h auto-approve feature (admin only)"""
+    """Enable or disable the scheduled 24h auto-approve feature (admin only).
+    Persists across server restarts via AppSetting DB table."""
     try:
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         if not user or user.role != 'admin':
             return jsonify({'error': 'Unauthorized'}), 403
 
-        from routes.scanner import auto_approve_enabled
-        import routes.scanner as scanner_module
-
         data = request.get_json() or {}
-        # If 'enabled' is passed, use it; otherwise toggle current state
-        if 'enabled' in data:
-            scanner_module.auto_approve_enabled = bool(data['enabled'])
-        else:
-            scanner_module.auto_approve_enabled = not scanner_module.auto_approve_enabled
 
-        state = scanner_module.auto_approve_enabled
-        print(f"[Admin] Auto-approve scheduled job {'ENABLED' if state else 'DISABLED'} by admin {user.username}")
+        if 'enabled' in data:
+            new_state = bool(data['enabled'])
+        else:
+            # Toggle current state
+            current = AppSetting.get('auto_approve_enabled', 'false')
+            new_state = current.lower() != 'true'
+
+        AppSetting.set('auto_approve_enabled', str(new_state).lower())
+
+        print(f"[Admin] Auto-approve {'ENABLED' if new_state else 'DISABLED'} by admin {user.username} (persisted to DB)")
         return jsonify({
-            'enabled': state,
-            'message': f"Auto-approve {'enabled' if state else 'disabled'}. Oldest 5 items will be approved every 24 hours."
+            'enabled': new_state,
+            'message': f"Auto-approve {'enabled' if new_state else 'disabled'}. Oldest 5 items will be approved every 24 hours."
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -165,15 +166,15 @@ def toggle_auto_approve():
 @admin_bp.route('/auto-approve/status', methods=['GET'])
 @jwt_required()
 def get_auto_approve_status():
-    """Get current auto-approve toggle state (admin only)"""
+    """Get current auto-approve toggle state from DB (admin only)"""
     try:
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         if not user or user.role != 'admin':
             return jsonify({'error': 'Unauthorized'}), 403
 
-        import routes.scanner as scanner_module
-        return jsonify({'enabled': scanner_module.auto_approve_enabled}), 200
+        val = AppSetting.get('auto_approve_enabled', 'false')
+        return jsonify({'enabled': val.lower() == 'true'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

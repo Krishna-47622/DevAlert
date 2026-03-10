@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, request, jsonify, current_app, redirect
 import json
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
@@ -166,7 +167,7 @@ def login():
 def get_current_user():
     """Get current user information"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -182,7 +183,7 @@ def get_current_user():
 def update_profile():
     """Update user profile (Full Name, Theme)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -238,7 +239,7 @@ def update_profile():
 def update_resume():
     """Update user resume text"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -298,7 +299,7 @@ def verify_email(token):
 def resend_verification():
     """Resend verification email"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -378,7 +379,7 @@ def reset_password():
 def change_password():
     """Change password (authenticated user)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -405,6 +406,78 @@ def change_password():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@auth_bp.route('/set-password', methods=['POST'])
+@jwt_required()
+def set_password():
+    """Set password for users who don't have one (phone/OAuth users)"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Only allow if user has no password set
+        if user.password_hash:
+            return jsonify({'error': 'Password already set. Use change-password instead.'}), 400
+        
+        data = request.get_json()
+        new_password = data.get('new_password', '').strip()
+        
+        if not new_password or len(new_password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+        
+        user.set_password(new_password)
+        db.session.commit()
+        
+        return jsonify({'message': 'Password set successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@auth_bp.route('/update-email', methods=['POST'])
+@jwt_required()
+def update_email():
+    """Update email for phone users who don't have a real email"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        data = request.get_json()
+        new_email = data.get('email', '').strip().lower()
+        
+        if not new_email or '@' not in new_email:
+            return jsonify({'error': 'Valid email is required'}), 400
+        
+        # Check if email is already in use
+        existing = User.query.filter_by(email=new_email).first()
+        if existing and existing.id != user.id:
+            return jsonify({'error': 'Email already in use by another account'}), 400
+        
+        user.email = new_email
+        user.email_verified = False
+        db.session.commit()
+        
+        # Send verification email
+        try:
+            frontend_url = request.host_url.rstrip('/')
+            send_verification_email(user, frontend_url)
+        except Exception:
+            pass  # Email sending may fail but update should still succeed
+        
+        return jsonify({
+            'message': 'Email updated. Verification email sent.',
+            'user': user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 # Two-Factor Authentication Endpoints
 
 @auth_bp.route('/2fa/setup', methods=['POST'])
@@ -412,7 +485,7 @@ def change_password():
 def setup_2fa():
     """Setup 2FA - generate secret and QR code"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -458,7 +531,7 @@ def setup_2fa():
 def enable_2fa():
     """Enable 2FA after verifying code"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -499,7 +572,7 @@ def enable_2fa():
 def disable_2fa():
     """Disable 2FA"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -529,6 +602,155 @@ def disable_2fa():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+# Phone Authentication (Firebase) Endpoints
+_google_certs_cache = None
+_google_certs_fetched_at = 0
+
+def verify_firebase_token(id_token):
+    """Verify Firebase ID token using Google's public keys (no service account needed)"""
+    import jwt
+    import requests as req
+    import os
+    import time as _time
+    from cryptography.x509 import load_pem_x509_certificate
+    
+    # Cache Google's public keys (refresh every hour)
+    global _google_certs_cache, _google_certs_fetched_at
+    now = _time.time()
+    if _google_certs_cache is None or (now - _google_certs_fetched_at) > 3600:
+        GOOGLE_CERTS_URL = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com'
+        certs_response = req.get(GOOGLE_CERTS_URL, timeout=10)
+        _google_certs_cache = certs_response.json()
+        _google_certs_fetched_at = now
+    
+    certs = _google_certs_cache
+    
+    # Get the key ID from the token header
+    unverified_header = jwt.get_unverified_header(id_token)
+    kid = unverified_header.get('kid')
+    
+    if kid not in certs:
+        raise ValueError('Invalid token: key ID not found')
+    
+    # Get the certificate
+    cert = load_pem_x509_certificate(certs[kid].encode())
+    public_key = cert.public_key()
+    
+    # Verify and decode the token
+    project_id = os.getenv('FIREBASE_PROJECT_ID') or os.getenv('VITE_FIREBASE_PROJECT_ID', 'devalert-live')
+    expected_issuer = f'https://securetoken.google.com/{project_id}'
+    
+    # Debug: check what's in the token before strict verification
+    try:
+        unverified_payload = jwt.decode(id_token, options={"verify_signature": False, "verify_aud": False, "verify_iss": False})
+        actual_issuer = unverified_payload.get('iss', 'UNKNOWN')
+        actual_audience = unverified_payload.get('aud', 'UNKNOWN')
+        print(f"🔑 Firebase token debug: expected_issuer={expected_issuer}, actual_issuer={actual_issuer}, expected_aud={project_id}, actual_aud={actual_audience}")
+    except Exception:
+        pass
+    
+    decoded = jwt.decode(
+        id_token,
+        public_key,
+        algorithms=['RS256'],
+        audience=project_id,
+        issuer=expected_issuer
+    )
+    
+    return decoded
+
+@auth_bp.route('/phone-login', methods=['POST'])
+def phone_login():
+    """Login or register user via Firebase Phone Authentication"""
+    try:
+        data = request.get_json()
+        id_token = data.get('id_token')
+        full_name = data.get('full_name', '').strip()
+        username = data.get('username', '').strip()
+        
+        if not id_token:
+            return jsonify({'error': 'Firebase ID token is required'}), 400
+        
+        # Verify the Firebase ID token using Google's public keys
+        decoded_token = verify_firebase_token(id_token)
+        phone_number = decoded_token.get('phone_number')
+        firebase_uid = decoded_token.get('user_id') or decoded_token.get('sub')
+        
+        if not phone_number:
+            return jsonify({'error': 'Phone number not found in token'}), 400
+        
+        # Find existing user by phone number
+        user = User.query.filter_by(phone_number=phone_number).first()
+        
+        if not user:
+            # Also check by oauth_provider_id (Firebase UID)
+            user = User.query.filter_by(oauth_provider='firebase_phone', oauth_provider_id=firebase_uid).first()
+        
+        is_new_user = False
+        if not user:
+            is_new_user = True
+            
+            # If no name/username provided, tell frontend to collect them
+            if not full_name and not username:
+                return jsonify({
+                    'needs_profile': True,
+                    'message': 'New user — please provide name and username'
+                }), 404
+            
+            # Generate a unique username from phone number if not provided
+            if not username:
+                safe_phone = phone_number.replace('+', '').replace(' ', '')
+                base_username = f'phone_{safe_phone[-4:]}'
+                username = base_username
+                counter = 1
+                while User.query.filter_by(username=username).first():
+                    username = f'{base_username}_{counter}'
+                    counter += 1
+            else:
+                # Check if username is taken
+                if User.query.filter_by(username=username).first():
+                    return jsonify({'error': 'Username already taken'}), 400
+            
+            # Generate a placeholder email (phone users may not have email)
+            safe_phone = phone_number.replace('+', '').replace(' ', '')
+            placeholder_email = f'{safe_phone}@phone.devalert.local'
+            
+            user = User(
+                username=username,
+                email=placeholder_email,
+                phone_number=phone_number,
+                full_name=full_name or None,
+                oauth_provider='firebase_phone',
+                oauth_provider_id=firebase_uid,
+                email_verified=True,  # Phone-verified users are treated as verified
+                role='participant'
+            )
+            db.session.add(user)
+            db.session.commit()
+        else:
+            # Update Firebase UID if not set
+            if not user.oauth_provider_id:
+                user.oauth_provider = 'firebase_phone'
+                user.oauth_provider_id = firebase_uid
+            # Update name if provided and not already set
+            if full_name and not user.full_name:
+                user.full_name = full_name
+            db.session.commit()
+        
+        # Create JWT access token
+        access_token = create_access_token(identity=str(user.id))
+        
+        return jsonify({
+            'message': 'Phone login successful',
+            'user': user.to_dict(),
+            'access_token': access_token,
+            'is_new_user': is_new_user
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Phone authentication failed: {str(e)}'}), 500
 
 # OAuth Endpoints
 
@@ -617,15 +839,18 @@ def oauth_callback(provider):
             'token': access_token,
             'user': user_data
         })
-        callback_url = f'/oauth-callback.html?{params}'
+        
+        frontend_url = current_app.config.get('FRONTEND_URL', 'http://localhost:5173').rstrip('/')
+        callback_url = f'{frontend_url}/oauth-callback.html?{params}'
         return redirect(callback_url)
         
     except Exception as e:
         db.session.rollback()
         # Redirect to callback with error
         from urllib.parse import urlencode
+        frontend_url = current_app.config.get('FRONTEND_URL', 'http://localhost:5173').rstrip('/')
         params = urlencode({'error': str(e)})
-        return redirect(f'/oauth-callback.html?{params}')
+        return redirect(f'{frontend_url}/oauth-callback.html?{params}')
 
 @auth_bp.route('/promote-admin/<string:username>/<string:secret_key>', methods=['GET'])
 def promote_admin(username, secret_key):

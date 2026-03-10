@@ -139,7 +139,7 @@ export default function NotificationsPage() {
                                     onClick={() => handleNotificationClick(notification)}
                                     style={{
                                         cursor: 'pointer',
-                                        backgroundColor: !notification.is_read ? 'rgba(59, 130, 246, 0.05)' : 'var(--color-bg-card)',
+                                        backgroundColor: !notification.is_read ? 'rgba(139, 92, 246, 0.06)' : 'var(--color-bg-card)',
                                         borderLeft: !notification.is_read ? '3px solid var(--color-accent)' : '3px solid transparent',
                                         padding: '1rem 1.25rem'
                                     }}
