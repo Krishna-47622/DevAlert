@@ -64,7 +64,7 @@ export default function Navbar() {
 
     const NavItem = ({ to, label }) => (
         <li>
-            <NavLink to={to} style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: "'Space Grotesk', monospace" }}>
+            <NavLink to={to} style={{ position: 'relative', padding: '0.4rem 0.8rem', color: 'inherit', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: "'Space Grotesk', monospace" }}>
                 {({ isActive }) => (
                     <>
                         <span style={{ position: 'relative', zIndex: 10, color: isActive ? '#f0ece4' : 'inherit' }}>{label}</span>
@@ -98,10 +98,10 @@ export default function Navbar() {
             }}
             transition={{
                 type: "spring",
-                stiffness: 420,
-                damping: 32,
-                mass: 0.8,
-                layout: { duration: 0.35 },
+                stiffness: 500,
+                damping: 38,
+                mass: 0.5,
+                layout: { duration: 0.25 },
             }}
             onClick={handleExpandToggle}
             style={{
@@ -125,12 +125,11 @@ export default function Navbar() {
             {/* ── Logo ── */}
             <motion.div layout="position" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                 <Link to="/" style={{
-                    fontSize: '0.9rem', fontWeight: 800, color: '#f0ece4',
+                    fontSize: '1.2rem', fontWeight: 800, color: '#f0ece4',
                     textDecoration: 'none', display: 'flex', alignItems: 'center', letterSpacing: '0.05em',
                     textTransform: 'uppercase', fontFamily: "'Inter', sans-serif",
                 }}>
                     DevAlert
-                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '1.1rem' }}>.</span>
                 </Link>
             </motion.div>
 

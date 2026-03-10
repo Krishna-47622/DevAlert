@@ -150,6 +150,20 @@ export default function AdminPage() {
         }
     };
 
+    const handlePurgeExpired = async () => {
+        showPopup('Purge Expired?', 'This will scan all approved and pending links and remove those that are expired or closed. Continue?', 'confirm', async () => {
+            try {
+                const response = await adminAPI.purgeExpired();
+                fetchPending();
+                fetchAllOpportunities();
+                showPopup('Purge Complete', response.data.message, 'success');
+            } catch (error) {
+                console.error('Error purging expired items:', error);
+                showPopup('Error', 'Failed to purge expired items.', 'error');
+            }
+        });
+    };
+
     const handleAutoApprove = async () => {
         showPopup('Confirm Auto-Approve', 'Are you sure you want to approve the 5 oldest pending hackathons and internships?', 'confirm', async () => {
             try {
@@ -390,10 +404,10 @@ export default function AdminPage() {
     // Style constants for reuse
     const tabButtonStyle = (isActive) => ({
         padding: '0.75rem 1.5rem',
-        background: isActive ? 'var(--primary-color, #22c55e)' : 'rgba(255, 255, 255, 0.05)',
-        color: isActive ? 'white' : 'rgba(255, 255, 255, 0.6)',
+        background: isActive ? 'var(--primary-color, #f0ece4)' : 'rgba(255, 255, 255, 0.03)',
+        color: isActive ? '#000000' : 'rgba(255, 255, 255, 0.5)',
         border: '1px solid',
-        borderColor: isActive ? 'var(--primary-color, #22c55e)' : 'rgba(255, 255, 255, 0.1)',
+        borderColor: isActive ? 'var(--primary-color, #f0ece4)' : 'rgba(255, 255, 255, 0.05)',
         borderRadius: '10px',
         cursor: 'pointer',
         fontWeight: '600',
@@ -562,6 +576,39 @@ export default function AdminPage() {
                             }} />
                         </div>
                     </div>
+
+                    {/* Divider */}
+                    <div style={{
+                        width: '1px',
+                        height: '36px',
+                        background: 'rgba(255,255,255,0.12)',
+                        margin: '0 0.5rem',
+                        flexShrink: 0
+                    }} />
+
+                    {/* Purge Expired Button */}
+                    <motion.button
+                        whileHover={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handlePurgeExpired}
+                        style={{
+                            padding: '0.6rem 1.25rem',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            background: 'transparent',
+                            color: '#EF4444',
+                            fontWeight: '600',
+                            fontSize: '0.85rem',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        <span className="material-icons" style={{ fontSize: '18px' }}>delete_sweep</span>
+                        Purge Expired
+                    </motion.button>
                 </div>
             </div>
 

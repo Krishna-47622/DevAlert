@@ -1,7 +1,18 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import './LandingPage.css';
+
+/* ═══ REDIRECT HOOK ═══ */
+function useAuthRedirect() {
+    const navigate = useNavigate();
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            navigate('/', { replace: true });
+        }
+    }, [navigate]);
+}
 
 /* ═══════════════════════════════════════════════════════
    FILM GRAIN — full-viewport noise overlay (canvas)
@@ -213,6 +224,7 @@ function AnimatedCounter({ end, suffix = '', duration = 2000 }) {
    MAIN LANDING PAGE
    ═══════════════════════════════════════════════════════ */
 export default function LandingPage() {
+    useAuthRedirect();
     const navigate = useNavigate();
     const mouse = useMouseParallax(30);
     const containerRef = useRef(null);

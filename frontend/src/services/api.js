@@ -101,6 +101,7 @@ export const adminAPI = {
     bulkAction: (data) => api.post('/admin/bulk-action', data),
     purgeAll: (type) => api.delete(`/admin/purge-all?type=${type}`),
     autoApprove: () => api.post('/admin/auto-approve'),
+    purgeExpired: () => api.post('/admin/purge-expired'),
     getAutoApproveStatus: () => api.get('/admin/auto-approve/status'),
     toggleAutoApprove: (enabled) => api.post('/admin/auto-approve/toggle', { enabled }),
 

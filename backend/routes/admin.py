@@ -4,9 +4,38 @@ from models import db, Hackathon, Internship, User, Notification, Application, A
 from sqlalchemy import func
 import threading
 import sys
-from .scanner import ai_scan_and_save
+from .scanner import ai_scan_and_save, fetch_page_text
+import re
 
 admin_bp = Blueprint('admin', __name__)
+
+def is_link_expired(url):
+    """Checks if an opportunity link is expired/closed by scanning for keywords"""
+    if not url or not url.startswith('http'):
+        return False
+        
+    page_text = fetch_page_text(url)
+    if not page_text:
+        return False # Fallback to False if we can't fetch it
+        
+    expired_keywords = [
+        r'registration[s]? (is|have) closed',
+        r'no longer accepting (responses|applications)',
+        r'expired',
+        r'event (is|has) finished',
+        r'applications are closed',
+        r'deadline has passed',
+        r'sold out',
+        r'event (is|has) over'
+    ]
+    
+    # Check for direct keyword matches (case insensitive)
+    text_lower = page_text.lower()
+    for pattern in expired_keywords:
+        if re.search(pattern, text_lower):
+            return True
+            
+    return False
 
 @admin_bp.route('/pending', methods=['GET'])
 @jwt_required()
@@ -703,34 +732,94 @@ def auto_approve_oldest():
         if not user or user.role != 'admin':
             return jsonify({'error': 'Unauthorized'}), 403
             
-        # 1. Find 5 oldest PENDING hackathons
-        oldest_hackathons = Hackathon.query.filter_by(status='pending')\
-            .order_by(Hackathon.created_at.asc())\
-            .limit(5).all()
+        # 1. Find PENDING items
+        pending_hackathons = Hackathon.query.filter_by(status='pending')\
+            .order_by(Hackathon.created_at.asc()).all()
             
-        # 2. Find 5 oldest PENDING internships
-        oldest_internships = Internship.query.filter_by(status='pending')\
-            .order_by(Internship.created_at.asc())\
-            .limit(5).all()
+        pending_internships = Internship.query.filter_by(status='pending')\
+            .order_by(Internship.created_at.asc()).all()
             
         count_h = 0
         count_i = 0
         
-        # Approve them
-        for h in oldest_hackathons:
-            h.status = 'approved'
-            count_h += 1
+        # Approve only non-expired ones, up to 5 total
+        for h in pending_hackathons:
+            if count_h >= 5: break
+            if not is_link_expired(h.registration_link):
+                h.status = 'approved'
+                count_h += 1
+            else:
+                h.status = 'rejected' # Auto-reject if expired
             
-        for i in oldest_internships:
-            i.status = 'approved'
-            count_i += 1
+        for i in pending_internships:
+            if count_i >= 5: break
+            if not is_link_expired(i.registration_link):
+                i.status = 'approved'
+                count_i += 1
+            else:
+                i.status = 'rejected' # Auto-reject if expired
             
         db.session.commit()
         
         return jsonify({
-            'message': f'Auto-approved {count_h} hackathons and {count_i} internships.',
+            'message': f'Auto-approved {count_h} hackathons and {count_i} internships. Expired items were automatically rejected.',
             'hackathons_count': count_h,
             'internships_count': count_i
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/purge-expired', methods=['POST'])
+@jwt_required()
+def purge_expired():
+    """Manually trigger a purge of expired/closed opportunities (admin only)"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+            
+        # 1. Fetch all hackathons and internships (approved or pending)
+        hackathons = Hackathon.query.filter(Hackathon.status.in_(['approved', 'pending'])).all()
+        internships = Internship.query.filter(Internship.status.in_(['approved', 'pending'])).all()
+        
+        purged_h = 0
+        purged_i = 0
+        now = datetime.utcnow()
+        
+        for h in hackathons:
+            # Check deadline first (faster than web request)
+            if h.deadline and h.deadline < now:
+                db.session.delete(h)
+                purged_h += 1
+                continue
+                
+            # Check web link
+            if is_link_expired(h.registration_link):
+                db.session.delete(h)
+                purged_h += 1
+                
+        for i in internships:
+            # Check deadline
+            if i.deadline and i.deadline < now:
+                db.session.delete(i)
+                purged_i += 1
+                continue
+                
+            # Check web link
+            if is_link_expired(i.registration_link):
+                db.session.delete(i)
+                purged_i += 1
+                
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Purged {purged_h} hackathons and {purged_i} internships.',
+            'purged_hackathons_count': purged_h,
+            'purged_internships_count': purged_i
         }), 200
         
     except Exception as e:
