@@ -18,6 +18,7 @@ export default function AdminPage() {
     const [isScanning, setIsScanning] = useState(false);
     const [autoApproveEnabled, setAutoApproveEnabled] = useState(false);
     const [autoApproveLoading, setAutoApproveLoading] = useState(false);
+    const [canUndo, setCanUndo] = useState(false);
     const [collapsedSections, setCollapsedSections] = useState({ hackathons: false, internships: false });
     const toggleSection = (key) => setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -151,17 +152,31 @@ export default function AdminPage() {
     };
 
     const handlePurgeExpired = async () => {
-        showPopup('Purge Expired?', 'This will scan all approved and pending links and remove those that are expired or closed. Continue?', 'confirm', async () => {
+        showPopup('Purge Expired?', 'This will scan all APPROVED links and remove those that are expired or closed. Continue?', 'confirm', async () => {
             try {
                 const response = await adminAPI.purgeExpired();
                 fetchPending();
                 fetchAllOpportunities();
+                setCanUndo(true);
                 showPopup('Purge Complete', response.data.message, 'success');
             } catch (error) {
                 console.error('Error purging expired items:', error);
                 showPopup('Error', 'Failed to purge expired items.', 'error');
             }
         });
+    };
+
+    const handleUndoPurge = async () => {
+        try {
+            const response = await adminAPI.undoPurge();
+            fetchPending();
+            fetchAllOpportunities();
+            setCanUndo(false);
+            showPopup('Undo Success', response.data.message, 'success');
+        } catch (error) {
+            console.error('Error undoing purge:', error);
+            showPopup('Error', 'Failed to undo purge operation.', 'error');
+        }
     };
 
     const handleAutoApprove = async () => {
@@ -609,6 +624,34 @@ export default function AdminPage() {
                         <span className="material-icons" style={{ fontSize: '18px' }}>delete_sweep</span>
                         Purge Expired
                     </motion.button>
+
+                    {/* Undo Purge Button */}
+                    {canUndo && (
+                        <motion.button
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            whileHover={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleUndoPurge}
+                            style={{
+                                padding: '0.6rem 1.25rem',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                background: 'transparent',
+                                color: '#3B82F6',
+                                fontWeight: '600',
+                                fontSize: '0.85rem',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            <span className="material-icons" style={{ fontSize: '18px' }}>undo</span>
+                            Undo Purge
+                        </motion.button>
+                    )}
                 </div>
             </div>
 

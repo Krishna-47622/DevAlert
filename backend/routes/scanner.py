@@ -12,6 +12,7 @@ import re
 import time
 import threading
 from urllib.parse import urljoin, urlparse
+from services.opportunity_service import is_opportunity_expired_centralized
 
 scanner_bp = Blueprint('scanner', __name__)
 
@@ -504,10 +505,16 @@ def extract_bulk_from_page(url, event_type):
         
         for opp in extracted:
             opp['link'] = get_absolute_url(base_domain, opp.get('link'))
-            if check_link_validity(opp['link']):
-                valid_results.append(opp)
-            else:
-                print(f">>> [Scanner] Invalid link filtered: {opp['link']}", flush=True)
+            if not check_link_validity(opp['link']):
+                print(f">>> [Scanner] Dead link filtered: {opp['link']}", flush=True)
+                continue
+            
+            # Content-based expiration check
+            if is_opportunity_expired_centralized(opp['link']):
+                print(f">>> [Scanner] Expired/Closed opportunity filtered: {opp['link']}", flush=True)
+                continue
+                
+            valid_results.append(opp)
         
         print(f">>> [Scanner] {len(valid_results)}/{len(extracted)} items passed link validation for {url}", flush=True)
         return valid_results
@@ -793,38 +800,8 @@ def auto_approve_oldest_5(app=None):
         with temp_app.app_context():
             _check_and_approve()
 
-def is_opportunity_expired(url):
-    if not url:
-        return False
-    try:
-        if not check_link_validity(url):
-            return True
+# is_opportunity_expired was replaced by services.opportunity_service.is_opportunity_expired_centralized
 
-        text = fetch_page_text(url)
-        if not text:
-            return False
-            
-        text_lower = text.lower()
-        expiration_phrases = [
-            "registration closed",
-            "registrations are closed",
-            "applications closed",
-            "applications are closed",
-            "event ended",
-            "this opportunity has expired",
-            "no longer accepting applications",
-            "deadline passed",
-            "this form is no longer accepting responses",
-            "applications have closed"
-        ]
-        
-        for phrase in expiration_phrases:
-            if phrase in text_lower:
-                return True
-                
-        return False
-    except:
-        return False
 
 def cleanup_expired_opportunities(app=None):
     """Periodically check all active opportunities and auto-expire them if the page is dead"""
@@ -835,14 +812,14 @@ def cleanup_expired_opportunities(app=None):
             # Check Hackathons
             hackathons = Hackathon.query.filter_by(status='approved').all()
             for h in hackathons:
-                if h.registration_link and is_opportunity_expired(h.registration_link):
+                if h.registration_link and is_opportunity_expired_centralized(h.registration_link):
                     h.status = 'expired'
                     expired_count += 1
             
             # Check Internships
             internships = Internship.query.filter_by(status='approved').all()
             for i in internships:
-                if i.application_link and is_opportunity_expired(i.application_link):
+                if i.application_link and is_opportunity_expired_centralized(i.application_link):
                     i.status = 'expired'
                     expired_count += 1
             

@@ -334,7 +334,7 @@ class AppSetting(db.Model):
     __tablename__ = 'app_settings'
 
     key = db.Column(db.String(100), primary_key=True)
-    value = db.Column(db.String(500), nullable=False, default='')
+    value = db.Column(db.Text, nullable=False, default='')
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     @classmethod

@@ -2,40 +2,17 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Hackathon, Internship, User, Notification, Application, AppSetting
 from sqlalchemy import func
+from datetime import datetime
 import threading
 import sys
 from .scanner import ai_scan_and_save, fetch_page_text
+from services.opportunity_service import is_opportunity_expired_centralized
 import re
+import json
 
 admin_bp = Blueprint('admin', __name__)
 
-def is_link_expired(url):
-    """Checks if an opportunity link is expired/closed by scanning for keywords"""
-    if not url or not url.startswith('http'):
-        return False
-        
-    page_text = fetch_page_text(url)
-    if not page_text:
-        return False # Fallback to False if we can't fetch it
-        
-    expired_keywords = [
-        r'registration[s]? (is|have) closed',
-        r'no longer accepting (responses|applications)',
-        r'expired',
-        r'event (is|has) finished',
-        r'applications are closed',
-        r'deadline has passed',
-        r'sold out',
-        r'event (is|has) over'
-    ]
-    
-    # Check for direct keyword matches (case insensitive)
-    text_lower = page_text.lower()
-    for pattern in expired_keywords:
-        if re.search(pattern, text_lower):
-            return True
-            
-    return False
+# Removed local is_link_expired in favor of services.opportunity_service
 
 @admin_bp.route('/pending', methods=['GET'])
 @jwt_required()
@@ -745,7 +722,7 @@ def auto_approve_oldest():
         # Approve only non-expired ones, up to 5 total
         for h in pending_hackathons:
             if count_h >= 5: break
-            if not is_link_expired(h.registration_link):
+            if not is_opportunity_expired_centralized(h.registration_link):
                 h.status = 'approved'
                 count_h += 1
             else:
@@ -753,7 +730,7 @@ def auto_approve_oldest():
             
         for i in pending_internships:
             if count_i >= 5: break
-            if not is_link_expired(i.registration_link):
+            if not is_opportunity_expired_centralized(i.application_link):
                 i.status = 'approved'
                 count_i += 1
             else:
@@ -782,44 +759,92 @@ def purge_expired():
         if not user or user.role != 'admin':
             return jsonify({'error': 'Unauthorized'}), 403
             
-        # 1. Fetch all hackathons and internships (approved or pending)
-        hackathons = Hackathon.query.filter(Hackathon.status.in_(['approved', 'pending'])).all()
-        internships = Internship.query.filter(Internship.status.in_(['approved', 'pending'])).all()
+        # 1. Fetch only APPROVED hackathons and internships
+        hackathons = Hackathon.query.filter_by(status='approved').all()
+        internships = Internship.query.filter_by(status='approved').all()
         
-        purged_h = 0
-        purged_i = 0
+        purged_h_ids = []
+        purged_i_ids = []
         now = datetime.utcnow()
         
         for h in hackathons:
             # Check deadline first (faster than web request)
-            if h.deadline and h.deadline < now:
-                db.session.delete(h)
-                purged_h += 1
-                continue
-                
-            # Check web link
-            if is_link_expired(h.registration_link):
-                db.session.delete(h)
-                purged_h += 1
+            if (h.deadline and h.deadline < now) or is_opportunity_expired_centralized(h.registration_link):
+                h.status = 'rejected'
+                purged_h_ids.append(h.id)
                 
         for i in internships:
-            # Check deadline
-            if i.deadline and i.deadline < now:
-                db.session.delete(i)
-                purged_i += 1
-                continue
+            # Check deadline or web content
+            if (i.deadline and i.deadline < now) or is_opportunity_expired_centralized(i.application_link):
+                i.status = 'rejected'
+                purged_i_ids.append(i.id)
                 
-            # Check web link
-            if is_link_expired(i.registration_link):
-                db.session.delete(i)
-                purged_i += 1
-                
+        # Save for undo
+        undo_data = {
+            'hackathons': purged_h_ids,
+            'internships': purged_i_ids,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        AppSetting.set('last_purge_data', json.dumps(undo_data))
+        
         db.session.commit()
         
         return jsonify({
-            'message': f'Purged {purged_h} hackathons and {purged_i} internships.',
-            'purged_hackathons_count': purged_h,
-            'purged_internships_count': purged_i
+            'message': f'Purged {len(purged_h_ids)} hackathons and {len(purged_i_ids)} internships (moved to rejected status).',
+            'purged_hackathons_count': len(purged_h_ids),
+            'purged_internships_count': len(purged_i_ids),
+            'can_undo': True
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/undo-purge', methods=['POST'])
+@jwt_required()
+def undo_purge():
+    """Revert the last purge action (admin only)"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+            
+        raw_data = AppSetting.get('last_purge_data')
+        if not raw_data:
+            return jsonify({'error': 'No purge data found to undo'}), 400
+            
+        undo_data = json.loads(raw_data)
+        h_ids = undo_data.get('hackathons', [])
+        i_ids = undo_data.get('internships', [])
+        
+        restored_h = 0
+        restored_i = 0
+        
+        # Restore hackathons
+        if h_ids:
+            h_to_restore = Hackathon.query.filter(Hackathon.id.in_(h_ids)).all()
+            for h in h_to_restore:
+                h.status = 'approved'
+                restored_h += 1
+                
+        # Restore internships
+        if i_ids:
+            i_to_restore = Internship.query.filter(Internship.id.in_(i_ids)).all()
+            for i in i_to_restore:
+                i.status = 'approved'
+                restored_i += 1
+                
+        # Clear undo data
+        AppSetting.set('last_purge_data', '')
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Restored {restored_h} hackathons and {restored_i} internships to approved status.',
+            'restored_hackathons': restored_h,
+            'restored_internships': restored_i
         }), 200
         
     except Exception as e:
