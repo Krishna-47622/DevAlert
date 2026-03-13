@@ -130,17 +130,20 @@ def build_frontend():
     frontend_path = Config.FRONTEND_SOURCE_PATH
     build_path = Config.FRONTEND_BUILD_PATH
     
-    # Check if build exists
+    # CRITICAL: Never build frontend at runtime on Render.
+    # It should only be built during the deployment phase via build.sh
+    if os.getenv('RENDER'):
+        if os.path.exists(build_path) and os.path.exists(os.path.join(build_path, 'index.html')):
+            print("🚀 Render Production: Frontend build found.")
+            return True
+        else:
+            print("❌ Render Production: Frontend build NOT found! Check build.sh logs.")
+            return False
+
+    # Local development build-on-demand logic
     if os.path.exists(build_path) and os.path.exists(os.path.join(build_path, 'index.html')):
         print("Frontend build already exists. Skipping build.")
         return True
-    
-    print("Building React frontend...")
-    
-    # Check if frontend directory exists
-    if not os.path.exists(frontend_path):
-        print("Warning: Frontend directory not found.")
-        return False
     
     # Check if node_modules exists
     node_modules = os.path.join(frontend_path, 'node_modules')

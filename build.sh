@@ -2,15 +2,21 @@
 # Exit on error
 set -o errexit
 
-# Install Python Dependencies (pip cache speeds up repeat deploys)
-echo "Installing Python dependencies..."
-pip install --upgrade pip
+# Install Python Dependencies
+echo "📦 Installing Python dependencies..."
+# Skip pip upgrade to save time, Render's pip is usually recent enough
 pip install -r backend/requirements.txt
 
 # Build Frontend
-echo "Building Frontend..."
+echo "🏗️ Building Frontend..."
 cd frontend
-npm ci --prefer-offline
+
+# Use 'npm install' instead of 'npm ci' to leverage Render's build cache
+# Added flags to skip unnecessary checks for speed
+echo "  - Installing npm packages..."
+npm install --prefer-offline --no-audit --no-fund
+
+echo "  - Running production build..."
 npm run build
 cd ..
 
