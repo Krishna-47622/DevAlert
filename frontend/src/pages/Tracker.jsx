@@ -130,7 +130,7 @@ export default function Tracker() {
 
     const renderCard = (item) => {
         const { event_details, event_type, id, status, match_score, match_explanation } = item;
-        if (!event_details) return null;
+        if (!event_details || event_details.deleted || event_details.global_status === 'rejected') return null;
 
         const isMatching = matchingItems[id];
         const getMatchClass = (score) => {
@@ -222,6 +222,11 @@ export default function Tracker() {
             <div className="tracker-rows">
                 {COLUMNS.map(column => {
                     const columnItems = items.filter(item => {
+                        // Filter out if underlying opportunity is deleted or globally rejected
+                        if (!item.event_details || item.event_details.deleted || item.event_details.global_status === 'rejected') {
+                            return false;
+                        }
+                        
                         if (column.id === 'Finished') {
                             return item.status === 'Finished' || item.status === 'Offered' || item.status === 'Rejected';
                         }

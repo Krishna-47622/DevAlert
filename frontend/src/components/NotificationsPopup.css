@@ -41,7 +41,9 @@
 .notifications-popup-body {
     flex: 1;
     overflow-y: auto;
-    max-height: 400px;
+    max-height: 450px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent) transparent;
 }
 
 .notifications-empty {

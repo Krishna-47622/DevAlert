@@ -150,7 +150,7 @@ class Hackathon(db.Model):
     organizer = db.Column(db.String(200))
     location = db.Column(db.String(200), nullable=False)
     mode = db.Column(db.String(20), default='hybrid')  # online, offline, hybrid
-    deadline = db.Column(db.DateTime, nullable=False)
+    deadline = db.Column(db.DateTime, nullable=True)
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)
     prize_pool = db.Column(db.String(100))
@@ -201,7 +201,7 @@ class Internship(db.Model):
     mode = db.Column(db.String(20), default='hybrid')  # online, offline, hybrid
     duration = db.Column(db.String(50))  # e.g., "3 months", "6 months"
     stipend = db.Column(db.String(100))
-    deadline = db.Column(db.DateTime, nullable=False)
+    deadline = db.Column(db.DateTime, nullable=True)
     start_date = db.Column(db.DateTime)
     skills_required = db.Column(db.Text)  # Comma-separated skills
     application_link = db.Column(db.String(500))
@@ -312,7 +312,8 @@ class TrackedEvent(db.Model):
                         'title': event.title,
                         'organizer': event.organizer,
                         'deadline': event.deadline.isoformat() if event.deadline else None,
-                        'link': event.registration_link
+                        'link': event.registration_link,
+                        'global_status': event.status
                     }
             else:
                 event = Internship.query.get(self.event_id)
@@ -321,8 +322,15 @@ class TrackedEvent(db.Model):
                         'title': event.title,
                         'company': event.company,
                         'deadline': event.deadline.isoformat() if event.deadline else None,
-                        'link': event.application_link
+                        'link': event.application_link,
+                        'global_status': event.status
                     }
+            
+            # If the underlying event is missing OR its status is 'rejected' globally,
+            # we want the frontend to know so it can hide it from counts if needed.
+            if 'event_details' not in data:
+                data['event_details'] = {'deleted': True}
+                
         except Exception as e:
             data['event_details'] = {'error': str(e)}
             

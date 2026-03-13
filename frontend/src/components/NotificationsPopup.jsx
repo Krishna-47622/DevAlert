@@ -52,7 +52,7 @@ export default function NotificationsPopup({ isOpen, onClose, anchorRef }) {
     const fetchNotifications = async () => {
         setLoading(true);
         try {
-            const response = await notificationsAPI.getAll({ limit: 5 });
+            const response = await notificationsAPI.getAll({ limit: 100 });
             setNotifications(response.data);
         } catch (error) {
             console.error('Error fetching notifications:', error);
@@ -131,8 +131,13 @@ export default function NotificationsPopup({ isOpen, onClose, anchorRef }) {
                                     <div className="notification-title">{notification.title}</div>
                                     <div className="notification-message">{notification.message}</div>
                                     <div className="notification-time">
-                                        {new Date(notification.created_at).toLocaleDateString()} at{' '}
-                                        {new Date(notification.created_at).toLocaleTimeString()}
+                                        {new Date(notification.created_at).toLocaleString([], { 
+                                            year: 'numeric', 
+                                            month: 'short', 
+                                            day: 'numeric', 
+                                            hour: '2-digit', 
+                                            minute: '2-digit' 
+                                        })}
                                     </div>
                                 </div>
                                 {!notification.is_read && <div className="notification-dot"></div>}

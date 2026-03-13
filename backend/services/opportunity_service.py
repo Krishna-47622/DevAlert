@@ -27,34 +27,38 @@ def fetch_page_text_minimal(url):
         return ""
 
 def is_opportunity_expired_centralized(url):
-    """Unified logic to check if an opportunity registration is closed or expired"""
+    """Unified logic to check if an opportunity registration is closed or expired.
+    
+    CONSERVATIVE approach: only returns True if there is STRONG evidence
+    the opportunity is closed. If in doubt, returns False (keeps the item).
+    Never marks an item expired if the page can't be fetched.
+    """
     if not url or not url.startswith('http'):
         return False
         
     page_text = fetch_page_text_minimal(url)
     if not page_text:
+        # Can't fetch page = assume it's still valid (conservative)
         return False
-        
-    expiration_patterns = [
-        r'registration[s]? (is|have) closed',
-        r'no longer accepting (responses|applications)',
-        r'expired',
-        r'event (is|has) finished',
-        r'applications are closed',
-        r'deadline has passed',
-        r'sold out',
-        r'event (is|has) over',
+    
+    # Only match very specific, unambiguous phrases that clearly indicate closure
+    # These must be full phrases, not single words like "expired"
+    strong_expiration_signals = [
+        r'registration[s]?\s+(is|are|have been)\s+closed',
+        r'no longer accepting\s+(responses|applications|entries)',
+        r'applications\s+are\s+closed',
         r'this form is no longer accepting responses',
         r'opportunity has expired',
-        r'registrations closed',
-        r'apply now button is disabled',
+        r'registrations?\s+closed',
         r'event is no longer active',
-        r'has ended',
-        r'not accepting any more entries'
+        r'not accepting any more entries',
     ]
     
-    for pattern in expiration_patterns:
+    matches = 0
+    for pattern in strong_expiration_signals:
         if re.search(pattern, page_text):
-            return True
-            
-    return False
+            matches += 1
+    
+    # Require at least ONE strong signal
+    return matches >= 1
+

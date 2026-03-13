@@ -336,6 +336,12 @@ def trigger_ai_scan():
             
         print(">>> [Admin] Identity verified, launching background thread...", flush=True)
         
+        # Check if already scanning or purging
+        if AppSetting.get('is_scanning', 'false') == 'true':
+            return jsonify({'error': 'A scan is already in progress.'}), 409
+        if AppSetting.get('is_purging', 'false') == 'true':
+            return jsonify({'error': 'A purge is in progress. Please wait.'}), 409
+
         # Get the real app object to pass to the thread
         from flask import current_app
         app_obj = current_app._get_current_object()
@@ -759,6 +765,13 @@ def purge_expired():
         if not user or user.role != 'admin':
             return jsonify({'error': 'Unauthorized'}), 403
             
+        # Concurrency check
+        if AppSetting.get('is_scanning', 'false') == 'true':
+            return jsonify({'error': 'Cannot purge while a scan is in progress.'}), 409
+        
+        AppSetting.set('is_purging', 'true')
+        db.session.commit()
+        
         # 1. Fetch only APPROVED hackathons and internships
         hackathons = Hackathon.query.filter_by(status='approved').all()
         internships = Internship.query.filter_by(status='approved').all()
@@ -789,6 +802,9 @@ def purge_expired():
         
         db.session.commit()
         
+        AppSetting.set('is_purging', 'false')
+        db.session.commit()
+        
         return jsonify({
             'message': f'Purged {len(purged_h_ids)} hackathons and {len(purged_i_ids)} internships (moved to rejected status).',
             'purged_hackathons_count': len(purged_h_ids),
@@ -797,6 +813,8 @@ def purge_expired():
         }), 200
         
     except Exception as e:
+        AppSetting.set('is_purging', 'false')
+        db.session.commit()
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 

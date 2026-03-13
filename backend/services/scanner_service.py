@@ -25,7 +25,6 @@ class AIScannerService:
             'cx': self.cx,
             'q': query,
             'num': num_results,
-            'dateRestrict': 'm1', # Past month only
             'gl': 'in' # Geo-locate to India
         }
         
@@ -35,7 +34,15 @@ class AIScannerService:
             response = requests.get(url, params=params)
             
             if response.status_code != 200:
-                msg = f"❌ Google Search API Error {response.status_code}: {response.text}"
+                error_data = response.json() if response.content else {"error": {"message": "Empty response"}}
+                msg = f"❌ Google Search API Error {response.status_code}: {json.dumps(error_data)}"
+                
+                # Special guidance for common errors
+                if response.status_code == 403:
+                    msg += "\n💡 TIP: Ensure 'Custom Search API' is enabled in Google Cloud Console and billing is linked if required."
+                elif response.status_code == 401:
+                    msg += "\n💡 TIP: Your GOOGLE_SEARCH_API_KEY appears to be invalid or expired."
+                
                 print(msg)
                 self.log(msg)
                 # Fallback to Mock Data if API fails (e.g. Account Review or Quota)
@@ -53,6 +60,21 @@ class AIScannerService:
             # Fallback to Mock Data on exception
             print("⚠️ Switch to MOCK DATA due to Exception.")
             return self._get_mock_data(query)
+
+    def _parse_date(self, date_str):
+        """Helper to safely parse dates, returns None if invalid"""
+        if not date_str or date_str == 'TBD':
+            return None
+            
+        try:
+            # Handle YYYY-MM-DD
+            return datetime.strptime(date_str, '%Y-%m-%d')
+        except:
+            try:
+                # Handle DD/MM/YYYY
+                return datetime.strptime(date_str, '%d/%m/%Y')
+            except:
+                return None
 
     def _get_mock_data(self, query):
         """Return realistic mock data when API is blocked"""
@@ -83,9 +105,14 @@ class AIScannerService:
                     "snippet": "Apply for Software Engineering Internship, Summer 2026 at Google. Locations: Bangalore, Hyderabad. Minimum qualifications: Currently enrolled in a Bachelor's degree."
                 },
                 {
-                    "title": "Microsoft SDE Intern (India)",
+                    "title": "Microsoft SDE Intern (India) 2026",
                     "link": "https://careers.microsoft.com",
-                    "snippet": "Microsoft India is looking for Software Development Engineer Interns. Work on real-world projects and impact millions of users."
+                    "snippet": "Microsoft India is looking for Software Development Engineer Interns for 2026. Work on real-world projects and impact millions of users."
+                },
+                {
+                    "title": "Amazon SDE Intern 2026",
+                    "link": "https://amazon.jobs",
+                    "snippet": "Amazon India is hiring Software Development Engineer Interns for Summer 2026. Join us to build the future."
                 }
             ]
         return []
@@ -107,16 +134,19 @@ class AIScannerService:
         You are an expert data extractor. I have search results for {event_type}s in India.
         Today's date is {today}.
         
-        Extract valid, upcoming {event_type}s from this text.
+        Extract valid, upcoming {event_type}s from this text for the year 2025 and 2026.
         Ignore past events or generic lists.
+        Focus on events in India or Remote opportunities available for Indian students.
         
         Return a JSON array of objects with these fields:
         - title (string)
-        - description (string, summarize snippet)
+        - description (string, summarize snippet into a compelling 2-sentence description)
         - link (string, use original link)
         - location (string, infer from snippet or 'Online')
         - date (string, YYYY-MM-DD or 'TBD')
         - organizer (string, for hackathons) / company (string, for internships)
+        
+        If a date is not clear, use 'TBD' or the end of the year 2026.
         
         SEARCH RESULTS:
         {results_text}

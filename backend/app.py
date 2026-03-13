@@ -62,7 +62,7 @@ def create_app():
         try:
             from sqlalchemy import text
             with app.app_context():
-                print("🔄 Running automatic database migration...")
+                print("[PROCESS] Running automatic database migration...")
                 migration_configs = [
                     # users table
                     ("users", "resume_text", "TEXT"),
@@ -83,22 +83,22 @@ def create_app():
                             if not any(row[1] == col for row in res):
                                 db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {type_def}"))
                                 db.session.commit()
-                                print(f"✅ Added column {col} to {table}")
+                                print(f"[SUCCESS] Added column {col} to {table}")
                         else:
                             db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {type_def}"))
                             db.session.commit()
                     except Exception as col_e:
-                        print(f"ℹ️ Column {col} in {table} skipped: {col_e}")
+                        print(f"[INFO] Column {col} in {table} skipped: {col_e}")
 
-                print("✅ Database migration finished")
+                print("[SUCCESS] Database migration finished")
         except Exception as e:
-            print(f"⚠️ Automatic migration failed: {e}")
+            print(f"[ERROR] Automatic migration failed: {e}")
         
         # Initialize and start scheduler
         try:
             start_scheduler(app)
             atexit.register(stop_scheduler)
-            print("✅ AI Scanner scheduler started successfully.")
+            print("[SUCCESS] AI Scanner scheduler started successfully.")
         except Exception as e:
             print(f"Warning: Scheduler could not be started: {e}")
 
@@ -134,10 +134,10 @@ def build_frontend():
     # It should only be built during the deployment phase via build.sh
     if os.getenv('RENDER'):
         if os.path.exists(build_path) and os.path.exists(os.path.join(build_path, 'index.html')):
-            print("🚀 Render Production: Frontend build found.")
+            print("[INFO] Render Production: Frontend build found.")
             return True
         else:
-            print("❌ Render Production: Frontend build NOT found! Check build.sh logs.")
+            print("[ERROR] Render Production: Frontend build NOT found! Check build.sh logs.")
             return False
 
     # Local development build-on-demand logic

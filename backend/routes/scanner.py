@@ -13,6 +13,7 @@ import time
 import threading
 from urllib.parse import urljoin, urlparse
 from services.opportunity_service import is_opportunity_expired_centralized
+from sqlalchemy import text
 
 scanner_bp = Blueprint('scanner', __name__)
 
@@ -23,7 +24,9 @@ scan_results = []
 def is_auto_approve_enabled():
     """Read auto-approve state from the database (persists across restarts)"""
     try:
-        val = AppSetting.get('auto_approve_enabled', 'false')
+        def get_val():
+            return AppSetting.get('auto_approve_enabled', 'false')
+        val = db_safe_query(get_val)
         return val.lower() == 'true'
     except Exception:
         return False
@@ -43,6 +46,28 @@ def safe_generate_content(prompt):
     except Exception as e:
         print(f"❌ [Scanner] safe_generate_content fatal error: {e}", flush=True)
         return None
+
+def db_safe_query(func, *args, **kwargs):
+    """Execute a DB operation with retry logic for connection drops"""
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            error_str = str(e).lower()
+            if "closed the connection" in error_str or "terminated abnormally" in error_str or "connection" in error_str:
+                print(f"⚠️ [Scanner] DB connection drop detected (Attempt {attempt+1}/{max_retries}). Recovering...", flush=True)
+                try:
+                    db.session.rollback()
+                    db.session.remove()
+                    # Re-verify connection
+                    db.session.execute(text("SELECT 1"))
+                except:
+                    pass
+                if attempt == max_retries - 1: raise
+                time.sleep(1)
+                continue
+            raise
 
 def check_link_validity(url):
     """Perform a HEAD request to check if a link is still alive with browser-like headers"""
@@ -124,15 +149,23 @@ def google_search(query, num_results=10):
     try:
         service = get_scanner_service()
         if not service:
-            print(">>> [Scanner] Service unavailable, using scraper fallback.", flush=True)
+            print(f">>> [Scanner] Service unavailable (API keys missing), using scraper fallback for: {query}", flush=True)
             return get_fallback_results(query)
         
-        # Uses the service's robust search (Mock Data if API Blocked)
+        # Uses the service's robust search
         items = service.search_google(query, num_results)
         
-        # If service returns empty list (and didn't fallback internally?), force fallback here
-        if not items:
-            return get_fallback_results(query)
+        # If service returns empty list or fails internally (e.g. 403/401), 
+        # get_scanner_service().search_google already returns _get_mock_data(query).
+        # We want to TRY real scrapers if it's mock data or empty.
+        
+        is_mock = any("Smart India Hackathon" in str(item.get('title')) or "Google Software Engineering Intern" in str(item.get('title')) for item in items[:2])
+        
+        if not items or is_mock:
+            print(f">>> [Scanner] Google Search returned mock/empty results for '{query}'. Trying scrapers...", flush=True)
+            scraper_results = get_fallback_results(query)
+            if scraper_results:
+                return scraper_results
             
         results = []
         for item in items:
@@ -260,14 +293,21 @@ def get_fallback_results(query):
     
     scraped_data = []
     if 'hackathon' in query.lower():
+        # Try Unstop first
         scraped_data.extend(scrape_unstop("hackathons"))
-        if not scraped_data:
-            scraped_data.extend(scrape_devpost())
+        # Try Devpost second
+        devpost_results = scrape_devpost()
+        for dr in devpost_results:
+            if not any(sr['link'] == dr['link'] for sr in scraped_data):
+                scraped_data.append(dr)
     elif 'internship' in query.lower():
         scraped_data.extend(scrape_unstop("internships"))
     
     if scraped_data:
+        print(f">>> [Scanner] Scrapers found {len(scraped_data)} real items to process.", flush=True)
         return scraped_data
+    
+    print(f">>> [Scanner] All scrapers failed for '{query}'. Using final hardcoded fallback.", flush=True)
     
     # Final hardcoded fallback if all else fails
     if 'hackathon' in query.lower():
@@ -397,8 +437,8 @@ def get_dynamic_queries(event_type):
         'internship': "LinkedIn, Internshala, Google Careers (STEP/SWE), Levels.fyi, AICTE Internship Portal, Unstop"
     }
     
-    default_hacks = ["site:devfolio.co hackathon 2026", "site:mlh.io 2026", "site:devpost.com India", "site:hackerearth.com hackathons"]
-    default_interns = ["site:internshala.com software intern 2026", "site:unstop.com internships", "site:careers.google.com student roles", "site:internship.aicte-india.org"]
+    default_hacks = ["site:devfolio.co hackathon 2025 2026", "site:mlh.io 2025 2026", "site:devpost.com hackathon India 2026", "site:hackerearth.com hackathons India 2026"]
+    default_interns = ["site:internshala.com software intern 2025 2026", "site:unstop.com internships 2026", "site:careers.google.com student roles India", "site:internship.aicte-india.org"]
     
     try:
         prompt = f"""
@@ -545,7 +585,10 @@ def _perform_scan():
                 print(">>> [Scanner] Running specialized LinkedIn internship scan...", flush=True)
                 linkedin_results = agg_service.scrape_linkedin_internships()
                 for res in linkedin_results:
-                    if ModelClass.query.filter_by(title=res['title'], company=res['company']).first():
+                    def check_exists():
+                        return ModelClass.query.filter_by(title=res['title'], company=res['company']).first()
+                    
+                    if db_safe_query(check_exists):
                         continue
                     
                     event_data = {
@@ -572,9 +615,13 @@ def _perform_scan():
                             status='pending',
                             source='LinkedIn'
                         )
-                        db.session.add(entry)
-                        db.session.flush()
-                        create_notifications_for_event(e_type, entry.id, entry.title)
+                        def save_entry():
+                            db.session.add(entry)
+                            db.session.flush()
+                            return entry.id
+                            
+                        entry_id = db_safe_query(save_entry)
+                        create_notifications_for_event(e_type, entry_id, entry.title)
                         new_interns += 1
                         print(f">>> [Scanner] SAVED (LinkedIn): {entry.title}", flush=True)
 
@@ -583,7 +630,10 @@ def _perform_scan():
                 print(f">>> [Scanner] Direct Scan URL: {direct_url}", flush=True)
                 bulk_results = extract_bulk_from_page(direct_url, e_type)
                 for res in bulk_results:
-                    if ModelClass.query.filter_by(title=res['name']).first(): 
+                    def check_exists_bulk():
+                        return ModelClass.query.filter_by(title=res['name']).first()
+                        
+                    if db_safe_query(check_exists_bulk): 
                         print(f">>> [Scanner] Skipping duplicate: {res['name']}", flush=True)
                         continue
                     
@@ -633,9 +683,13 @@ def _perform_scan():
                             source=enriched.get('source', 'Web')
                         )
                     
-                    db.session.add(entry)
-                    db.session.flush()
-                    create_notifications_for_event(e_type, entry.id, entry.title)
+                    def save_bulk_entry():
+                        db.session.add(entry)
+                        db.session.flush()
+                        return entry.id
+                        
+                    entry_id = db_safe_query(save_bulk_entry)
+                    create_notifications_for_event(e_type, entry_id, entry.title)
                     if e_type == 'hackathon': new_hacks += 1
                     else: new_interns += 1
                     print(f">>> [Scanner] SAVED: {entry.title}", flush=True)
@@ -648,7 +702,10 @@ def _perform_scan():
                     if not check_link_validity(res['link']): 
                         print(f">>> [Scanner] Filtered (Invalid Link): {res['link']}", flush=True)
                         continue
-                    if ModelClass.query.filter_by(title=res['title']).first(): 
+                    def check_exists_disc():
+                        return ModelClass.query.filter_by(title=res['title']).first()
+                        
+                    if db_safe_query(check_exists_disc): 
                         print(f">>> [Scanner] Filtered (Duplicate): {res['title']}", flush=True)
                         continue
                     
@@ -685,15 +742,27 @@ def _perform_scan():
                              source=enriched.get('source', 'Web')
                          )
                     
-                    db.session.add(entry)
-                    db.session.flush()
-                    create_notifications_for_event(e_type, entry.id, entry.title)
+                    def save_disc_entry():
+                        db.session.add(entry)
+                        db.session.flush()
+                        return entry.id
+                        
+                    entry_id = db_safe_query(save_disc_entry)
+                    create_notifications_for_event(e_type, entry_id, entry.title)
                     if e_type == 'hackathon': new_hacks += 1
                     else: new_interns += 1
                     print(f">>> [Scanner] SAVED ({e_type}): {entry.title}", flush=True)
+                    
+                    # Periodic session refresh to prevent Supabase timeouts
+                    if (new_hacks + new_interns) % 5 == 0:
+                        db.session.commit()
+                        db.session.remove()
             
-        print(f">>> [Scanner] Committing {new_hacks + new_interns} new entries to database...", flush=True)
-        db.session.commit()
+        print(f">>> [Scanner] Committing final results ({new_hacks} hacks, {new_interns} interns)...", flush=True)
+        def final_commit():
+            db.session.commit()
+            return True
+        db_safe_query(final_commit)
         
         result = {
             'timestamp': datetime.now().isoformat(),
@@ -716,6 +785,12 @@ def ai_scan_and_save(app=None):
     Main scanning function with background safety.
     """
     print(f">>> [Scanner Thread] Worker started at {datetime.now()}", flush=True)
+    try:
+        def set_scanning_true():
+            AppSetting.set('is_scanning', 'true')
+        db_safe_query(set_scanning_true)
+    except:
+        pass
     time.sleep(2)
     
     try:
@@ -732,6 +807,9 @@ def ai_scan_and_save(app=None):
         return {'error': str(e)}
     finally:
         try:
+            def set_scanning_false():
+                AppSetting.set('is_scanning', 'false')
+            db_safe_query(set_scanning_false)
             db.session.remove()
         except:
             pass
@@ -739,17 +817,18 @@ def ai_scan_and_save(app=None):
 @scanner_bp.route('/scan', methods=['POST'])
 def trigger_scan():
     """Manual scan trigger - runs in background with DB safety"""
+    from flask import current_app
     app_obj = current_app._get_current_object()
-    db.session.remove()
-    db.engine.dispose()
+    print(f">>> [Admin] Launching scanner thread...", flush=True)
     
+    # Run in background to avoid 502 timeout
     thread = threading.Thread(target=ai_scan_and_save, args=(app_obj,))
     thread.daemon = True
     thread.start()
     
     return jsonify({
         "status": "success",
-        "message": "Scan started in background.",
+        "message": "AI scan triggered successfully in background. Results will appear soon.",
         "timestamp": datetime.now().isoformat()
     })
 
